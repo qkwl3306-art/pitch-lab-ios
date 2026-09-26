@@ -26,15 +26,26 @@ jobs:
       - name: Run unit tests
         run: xcodebuild test -project PitchLab.xcodeproj -scheme PitchLab -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
       - name: Upload test diagnostics
-        if: failure()
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: PitchLab-test-diagnostics
           path: |
             TestResults.xcresult
             ~/Library/Logs/DiagnosticReports
+      - name: Export simulator screenshots
+        if: always()
+        run: xcrun xcresulttool export attachments --path TestResults.xcresult --output-path TestScreenshots || true
+      - name: Upload simulator screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PitchLab-simulator-screenshots
+          path: TestScreenshots
       - name: Build unsigned device app
         run: xcodebuild build -project PitchLab.xcodeproj -scheme PitchLab -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+      - name: Verify full-screen launch configuration
+        run: python3 -c 'import plistlib; p="build/Build/Products/Release-iphoneos/PitchLab.app/Info.plist"; data=plistlib.load(open(p,"rb")); assert "UILaunchScreen" in data, data.keys()'
       - name: Package unsigned IPA
         shell: bash
         run: |

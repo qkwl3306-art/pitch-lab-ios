@@ -9,6 +9,9 @@ final class TonePlayer {
 
     func noteOn(midi: Int) {
         guard players[midi] == nil else { return }
+        let player = AVAudioPlayerNode()
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
         do {
             if !engine.isRunning {
                 if AVAudioSession.sharedInstance().category != .playAndRecord {
@@ -17,15 +20,13 @@ final class TonePlayer {
                 try AVAudioSession.sharedInstance().setActive(true)
                 try engine.start()
             }
-            let player = AVAudioPlayerNode()
-            engine.attach(player)
-            engine.connect(player, to: engine.mainMixerNode, format: format)
             let buffer = makeBuffer(midi: midi)
             player.volume = 0.22
             player.scheduleBuffer(buffer, at: nil, options: .loops)
             player.play()
             players[midi] = player
         } catch {
+            engine.detach(player)
             // Audio route errors leave the key silent; the next key retries activation.
         }
     }

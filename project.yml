@@ -23,6 +23,7 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: 音律实验室
         INFOPLIST_KEY_NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: 1
   PitchLabTests:
     type: bundle.unit-test
