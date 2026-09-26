@@ -148,6 +148,9 @@ struct PracticeView: View {
                     .buttonStyle(.borderless)
                     Text("目标音 \(session.index + 1) / \(session.notes.count)")
                         .font(.headline)
+                    Text("本轮已达标 \(session.passedCount) / \(session.notes.count)")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
                     HStack(alignment: .firstTextBaseline) {
                         Text(model.targetName)
                             .font(.system(size: 48, weight: .bold, design: .rounded))
@@ -233,6 +236,14 @@ struct PracticeView: View {
                                 .font(.subheadline.bold())
                                 .padding(10)
                                 .background(entry.offset == model.session?.index ? Color.mint.opacity(0.3) : Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))
+                                .overlay(alignment: .topTrailing) {
+                                    if model.session?.passedIndices.contains(entry.offset) == true {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .font(.caption)
+                                            .foregroundStyle(.green)
+                                            .offset(x: 5, y: -5)
+                                    }
+                                }
                         }
                     }
                 }

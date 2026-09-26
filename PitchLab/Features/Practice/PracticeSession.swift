@@ -12,6 +12,9 @@ struct PracticeSession {
     private(set) var index = 0
     private(set) var currentPassed = false
     private(set) var transposition = 0
+    private(set) var passedIndices: Set<Int> = []
+
+    var passedCount: Int { passedIndices.count }
 
     var currentMIDI: Int? { notes.indices.contains(index) ? notes[index] + transposition : nil }
 
@@ -20,24 +23,26 @@ struct PracticeSession {
         guard limited != transposition else { return }
         transposition = limited
         currentPassed = false
+        passedIndices.removeAll()
     }
 
     mutating func accept(frequency: Double?) {
         guard let currentMIDI else { return }
         if PracticeScoring.isAccurate(frequency: frequency, targetMIDI: currentMIDI) {
             currentPassed = true
+            passedIndices.insert(index)
         }
     }
 
     mutating func next() {
         guard index + 1 < notes.count else { return }
         index += 1
-        currentPassed = false
+        currentPassed = passedIndices.contains(index)
     }
 
     mutating func previous() {
         guard index > 0 else { return }
         index -= 1
-        currentPassed = false
+        currentPassed = passedIndices.contains(index)
     }
 }

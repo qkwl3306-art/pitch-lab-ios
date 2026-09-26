@@ -25,6 +25,8 @@ private final class MelodyDelegate: NSObject, XMLParserDelegate {
     private var step: String?
     private var alter = 0
     private var octave: Int?
+    private var voice: String?
+    private var selectedVoice: String?
     private var field: String?
     private var fieldText = ""
 
@@ -42,10 +44,11 @@ private final class MelodyDelegate: NSObject, XMLParserDelegate {
             step = nil
             alter = 0
             octave = nil
+            voice = nil
         } else if inNote {
             if name == "rest" { isRest = true }
             if name == "chord" { isChord = true }
-            if ["step", "alter", "octave"].contains(name) {
+            if ["step", "alter", "octave", "voice"].contains(name) {
                 field = name
                 fieldText = ""
             }
@@ -63,12 +66,15 @@ private final class MelodyDelegate: NSObject, XMLParserDelegate {
             case "step": step = text
             case "alter": alter = Int(text) ?? 0
             case "octave": octave = Int(text)
+            case "voice": voice = text
             default: break
             }
             self.field = nil
         }
         if name == "note", inNote {
-            if !isRest, !isChord, let step, let octave {
+            let noteVoice = voice ?? "1"
+            if selectedVoice == nil { selectedVoice = noteVoice }
+            if selectedVoice == noteVoice, !isRest, !isChord, let step, let octave {
                 let semitones = ["C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11]
                 if let base = semitones[step] {
                     let midi = (octave + 1) * 12 + base + alter
