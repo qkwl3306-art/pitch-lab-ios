@@ -1,0 +1,5 @@
+PitchLab.xcodeproj/
+build/
+artifact/
+*.xcresult
+.DS_Store

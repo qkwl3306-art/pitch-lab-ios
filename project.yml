@@ -1,0 +1,41 @@
+name: PitchLab
+options:
+  bundleIdPrefix: com.qkwl3306art
+settings:
+  base:
+    SWIFT_VERSION: 5.0
+    IPHONEOS_DEPLOYMENT_TARGET: 17.0
+targets:
+  PitchLab:
+    type: application
+    platform: iOS
+    sources: [PitchLab]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab
+        PRODUCT_NAME: PitchLab
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: 音律实验室
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
+        TARGETED_DEVICE_FAMILY: 1
+        CODE_SIGNING_ALLOWED: NO
+  PitchLabTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources: [PitchLabTests]
+    dependencies:
+      - target: PitchLab
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab.tests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGNING_ALLOWED: NO
+schemes:
+  PitchLab:
+    build:
+      targets:
+        PitchLab: all
+        PitchLabTests: [test]
+    test:
+      targets:
+        - PitchLabTests

@@ -1,0 +1,38 @@
+name: Build iOS
+on:
+  push:
+    branches: [main, feat/native-music-tools]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install XcodeGen
+        run: brew install xcodegen
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Select simulator
+        id: simulator
+        shell: bash
+        run: |
+          SIM_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(v["udid"] for devices in d.values() for v in devices if "iPhone" in v["name"] and v["state"] != "unavailable"))')
+          echo "id=$SIM_ID" >> "$GITHUB_OUTPUT"
+      - name: Run unit tests
+        run: xcodebuild test -project PitchLab.xcodeproj -scheme PitchLab -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' CODE_SIGNING_ALLOWED=NO
+      - name: Build unsigned device app
+        run: xcodebuild build -project PitchLab.xcodeproj -scheme PitchLab -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO
+      - name: Package unsigned IPA
+        shell: bash
+        run: |
+          mkdir -p artifact/Payload
+          cp -R build/Build/Products/Release-iphoneos/PitchLab.app artifact/Payload/
+          cd artifact
+          zip -qry PitchLab-unsigned.ipa Payload
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PitchLab-unsigned-ipa
+          path: artifact/PitchLab-unsigned.ipa
