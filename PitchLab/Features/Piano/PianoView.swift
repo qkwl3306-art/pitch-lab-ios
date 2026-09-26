@@ -17,26 +17,38 @@ struct PianoView: View {
                 }
                 .padding(.horizontal)
 
-                ScrollView(.horizontal) {
-                    ZStack(alignment: .topLeading) {
-                        HStack(spacing: 1) {
-                            ForEach(whiteNotes, id: \.self) { note in
-                                PianoKey(note: note, isBlack: false, player: player)
-                                    .frame(width: 48, height: 230)
+                ScrollViewReader { proxy in
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Button("低音区") { withAnimation { proxy.scrollTo(48, anchor: .leading) } }
+                            Button("中音区") { withAnimation { proxy.scrollTo(60, anchor: .leading) } }
+                            Button("高音区") { withAnimation { proxy.scrollTo(72, anchor: .leading) } }
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.horizontal)
+                        ScrollView(.horizontal) {
+                            ZStack(alignment: .topLeading) {
+                                HStack(spacing: 1) {
+                                    ForEach(whiteNotes, id: \.self) { note in
+                                        PianoKey(note: note, isBlack: false, player: player)
+                                            .frame(width: 48, height: 230)
+                                            .id(note)
+                                    }
+                                }
+                                ForEach(blackNotes, id: \.self) { note in
+                                    let previousWhites = whiteNotes.filter { $0 < note }.count
+                                    PianoKey(note: note, isBlack: true, player: player)
+                                        .frame(width: 30, height: 140)
+                                        .offset(x: CGFloat(previousWhites) * 49 - 15)
+                                }
                             }
+                            .padding(.horizontal)
                         }
-                        ForEach(blackNotes, id: \.self) { note in
-                            let previousWhites = whiteNotes.filter { $0 < note }.count
-                            PianoKey(note: note, isBlack: true, player: player)
-                                .frame(width: 30, height: 140)
-                                .offset(x: CGFloat(previousWhites) * 49 - 15)
-                        }
+                        .scrollIndicators(.hidden)
                     }
-                    .padding(.horizontal)
                 }
-                .scrollIndicators(.hidden)
 
-                Label("左右滑动可切换音域", systemImage: "hand.draw")
+                Label("可左右滑动，或使用音区按钮", systemImage: "hand.draw")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal)
@@ -67,7 +79,7 @@ private struct PianoKey: View {
             }
             .shadow(color: .black.opacity(0.17), radius: 3, y: 3)
             .contentShape(Rectangle())
-            .gesture(
+            .simultaneousGesture(
                 DragGesture(minimumDistance: 0)
                     .onChanged { _ in
                         if !pressed {

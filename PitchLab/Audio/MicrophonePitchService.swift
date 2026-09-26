@@ -17,6 +17,9 @@ final class MicrophonePitchService: ObservableObject {
     @Published private(set) var status: Status = .idle
 
     private let engine = AVAudioEngine()
+    private let analysisQueue = DispatchQueue(label: "PitchLab.pitch-analysis", qos: .userInitiated)
+    private let analysisGate = AudioAnalysisGate()
+    private var captureIntent = CaptureIntent()
     private var tapInstalled = false
     private var interruptionObserver: NSObjectProtocol?
 
@@ -42,9 +45,10 @@ final class MicrophonePitchService: ObservableObject {
 
     func start() {
         guard status != .listening, status != .requestingPermission else { return }
+        let request = captureIntent.begin()
         switch AVAudioSession.sharedInstance().recordPermission {
         case .granted:
-            startEngine()
+            startEngine(request: request)
         case .denied:
             status = .denied
         case .undetermined:
@@ -52,7 +56,8 @@ final class MicrophonePitchService: ObservableObject {
             AVAudioSession.sharedInstance().requestRecordPermission { [weak self] granted in
                 Task { @MainActor [weak self] in
                     guard let self else { return }
-                    if granted { self.startEngine() } else { self.status = .denied }
+                    guard self.captureIntent.isCurrent(request) else { return }
+                    if granted { self.startEngine(request: request) } else { self.status = .denied }
                 }
             }
         @unknown default:
@@ -61,6 +66,7 @@ final class MicrophonePitchService: ObservableObject {
     }
 
     func stop() {
+        captureIntent.cancel()
         if tapInstalled {
             engine.inputNode.removeTap(onBus: 0)
             tapInstalled = false
@@ -71,7 +77,7 @@ final class MicrophonePitchService: ObservableObject {
         status = .idle
     }
 
-    private func startEngine() {
+    private func startEngine(request: Int) {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
@@ -82,11 +88,23 @@ final class MicrophonePitchService: ObservableObject {
                 status = .failed("未找到可用的麦克风输入")
                 return
             }
+            let gate = analysisGate
+            let worker = analysisQueue
             input.installTap(onBus: 0, bufferSize: 4_096, format: format) { [weak self] buffer, _ in
-                guard let channel = buffer.floatChannelData?[0] else { return }
+                guard gate.begin() else { return }
+                guard let channel = buffer.floatChannelData?[0] else {
+                    gate.end()
+                    return
+                }
                 let samples = Array(UnsafeBufferPointer(start: channel, count: Int(buffer.frameLength)))
-                let hz = PitchDetector.detect(samples: samples, sampleRate: format.sampleRate)
-                Task { @MainActor [weak self] in self?.pitchHz = hz }
+                worker.async {
+                    let hz = PitchDetector.detect(samples: samples, sampleRate: format.sampleRate)
+                    gate.end()
+                    Task { @MainActor [weak self] in
+                        guard let self, self.captureIntent.isCurrent(request), self.status == .listening else { return }
+                        self.pitchHz = hz
+                    }
+                }
             }
             tapInstalled = true
             engine.prepare()
