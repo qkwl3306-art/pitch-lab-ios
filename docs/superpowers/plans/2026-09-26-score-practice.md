@@ -48,3 +48,13 @@
 - [ ] Implement scoring, integrate existing pitch service and tone player, show curve/readout.
 - [ ] Run CI test, device build, and unsigned IPA packaging; document limitations.
 - [ ] Commit and push.
+
+### Task 4: Transposition
+
+**Files:** `PitchLab/Features/Practice/PracticeSession.swift`, `PitchLab/Features/Practice/PracticeViewModel.swift`, `PitchLab/Features/Practice/PracticeView.swift`, `PitchLabTests/PracticeScoringTests.swift`.
+
+**Interfaces:** `PracticeSession.setTransposition(_:)` accepts −12...+12; `currentMIDI` and reference playback use transposed pitch.
+
+- [ ] Add tests for two-semitone lowering, ±12 bounds and score reset after a key change; run CI to see failure.
+- [ ] Implement transposed targets and a semitone stepper in the practice view.
+- [ ] Run CI tests and unsigned IPA packaging; commit and push.

@@ -21,4 +21,23 @@ final class PracticeScoringTests: XCTestCase {
         XCTAssertEqual(session.currentMIDI, 71)
         XCTAssertFalse(session.currentPassed)
     }
+
+    func testTransposeMovesTargetAndClearsResult() {
+        var session = PracticeSession(notes: [69, 71])
+        session.accept(frequency: 440)
+        XCTAssertTrue(session.currentPassed)
+        session.setTransposition(-2)
+        XCTAssertEqual(session.currentMIDI, 67)
+        XCTAssertFalse(session.currentPassed)
+        session.accept(frequency: NoteMath.frequency(midi: 67))
+        XCTAssertTrue(session.currentPassed)
+    }
+
+    func testTranspositionIsLimitedToOneOctave() {
+        var session = PracticeSession(notes: [69])
+        session.setTransposition(20)
+        XCTAssertEqual(session.transposition, 12)
+        session.setTransposition(-20)
+        XCTAssertEqual(session.transposition, -12)
+    }
 }
