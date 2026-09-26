@@ -21,7 +21,7 @@ final class MXLLoaderTests: XCTestCase {
         """.utf8)
         try add(container, path: "META-INF/container.xml", to: archive)
         if let score { try add(score, path: "score.xml", to: archive) }
-        return archive.data
+        return try XCTUnwrap(archive.data)
     }
 
     private func add(_ data: Data, path: String, to archive: Archive) throws {
