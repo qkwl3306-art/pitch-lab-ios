@@ -24,7 +24,6 @@ targets:
         INFOPLIST_KEY_CFBundleDisplayName: 音律实验室
         INFOPLIST_KEY_NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
         TARGETED_DEVICE_FAMILY: 1
-        CODE_SIGNING_ALLOWED: NO
   PitchLabTests:
     type: bundle.unit-test
     platform: iOS
@@ -36,7 +35,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab.tests
         GENERATE_INFOPLIST_FILE: YES
-        CODE_SIGNING_ALLOWED: NO
 schemes:
   PitchLab:
     build:

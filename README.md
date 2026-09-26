@@ -22,6 +22,8 @@ xcodebuild test -project PitchLab.xcodeproj -scheme PitchLab -destination 'platf
 
 仓库的 GitHub Actions 工作流会运行测试并打包 `PitchLab-unsigned.ipa`。未签名 IPA **不能直接安装**；需要使用你的 Apple 开发者证书和描述文件重新签名。仓库不包含签名材料。
 
+如需在 Mac 上自行签名，先运行 `xcodegen generate` 并打开生成的 `PitchLab.xcodeproj`，在 PitchLab target 的 Signing & Capabilities 中选择自己的 Team，并按需更改 Bundle Identifier。CI 会在构建命令中单独关闭签名，不影响本地 Xcode 的签名设置。
+
 ## 真机检查
 
 在 iPhone 上检查麦克风授权和拒绝授权流程、稳定单音识别、钢琴多点触控、听音测试播放、Files/照片导入、PDF 缩放、逐音练唱、音频打断与恢复。录音只在设备上分析，不保存或上传。导入的乐谱也仅存于设备。
