@@ -11,8 +11,16 @@ struct PracticeSession {
     let notes: [Int]
     private(set) var index = 0
     private(set) var currentPassed = false
+    private(set) var transposition = 0
 
-    var currentMIDI: Int? { notes.indices.contains(index) ? notes[index] : nil }
+    var currentMIDI: Int? { notes.indices.contains(index) ? notes[index] + transposition : nil }
+
+    mutating func setTransposition(_ semitones: Int) {
+        let limited = max(-12, min(12, semitones))
+        guard limited != transposition else { return }
+        transposition = limited
+        currentPassed = false
+    }
 
     mutating func accept(frequency: Double?) {
         guard let currentMIDI else { return }

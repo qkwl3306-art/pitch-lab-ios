@@ -129,6 +129,23 @@ struct PracticeView: View {
             scorePreview(score)
             if let session = model.session {
                 VStack(alignment: .leading, spacing: 14) {
+                    HStack {
+                        Text("移调")
+                            .font(.headline)
+                        Spacer()
+                        Button { model.transpose(by: -1) } label: {
+                            Image(systemName: "minus.circle.fill")
+                        }
+                        .disabled(session.transposition <= -12)
+                        Text(session.transposition == 0 ? "原调" : String(format: "%+d 半音", session.transposition))
+                            .font(.subheadline.monospacedDigit())
+                            .frame(minWidth: 78)
+                        Button { model.transpose(by: 1) } label: {
+                            Image(systemName: "plus.circle.fill")
+                        }
+                        .disabled(session.transposition >= 12)
+                    }
+                    .buttonStyle(.borderless)
                     Text("目标音 \(session.index + 1) / \(session.notes.count)")
                         .font(.headline)
                     HStack(alignment: .firstTextBaseline) {
@@ -212,7 +229,7 @@ struct PracticeView: View {
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
                         ForEach(Array(score.notes.enumerated()), id: \.offset) { entry in
-                            Text(NoteMath.name(midi: entry.element))
+                            Text(NoteMath.name(midi: entry.element + (model.session?.transposition ?? 0)))
                                 .font(.subheadline.bold())
                                 .padding(10)
                                 .background(entry.offset == model.session?.index ? Color.mint.opacity(0.3) : Color.secondary.opacity(0.12), in: RoundedRectangle(cornerRadius: 10))

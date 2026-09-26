@@ -49,6 +49,14 @@ final class PracticeViewModel: ObservableObject {
         accurateFrames = 0
     }
 
+    func transpose(by semitones: Int) {
+        guard let current = session?.transposition else { return }
+        session?.setTransposition(current + semitones)
+        accurateFrames = 0
+        playbackTask?.cancel()
+        player.stopAll()
+    }
+
     func playTarget() {
         guard let note = session?.currentMIDI else { return }
         playbackTask?.cancel()
