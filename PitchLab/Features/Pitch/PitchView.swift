@@ -123,7 +123,7 @@ struct PitchView: View {
     }
 }
 
-private struct PitchCurve: View {
+struct PitchCurve: View {
     let readings: [PitchReading]
 
     var body: some View {

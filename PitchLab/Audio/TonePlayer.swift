@@ -11,7 +11,9 @@ final class TonePlayer {
         guard players[midi] == nil else { return }
         do {
             if !engine.isRunning {
-                try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                if AVAudioSession.sharedInstance().category != .playAndRecord {
+                    try AVAudioSession.sharedInstance().setCategory(.playback, mode: .default, options: [.mixWithOthers])
+                }
                 try AVAudioSession.sharedInstance().setActive(true)
                 try engine.start()
             }

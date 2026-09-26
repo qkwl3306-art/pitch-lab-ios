@@ -6,7 +6,7 @@
 
 ## 平台与交付
 
-- SwiftUI、AVFoundation、Accelerate；最低 iOS 17。
+- SwiftUI、AVFoundation；最低 iOS 17。新增乐谱练唱功能使用 ZIPFoundation 读取 MXL，详见同目录的乐谱练唱规格。
 - 在 GitHub Actions 的 macOS runner 上编译和运行测试。
 - 产出未签名的 `.ipa` 和构建日志；用户负责签名。签名后才能安装到 iPhone。
 - 本地 Windows 环境无法运行 Xcode；最终设备音频体验需在 iPhone 验证。
