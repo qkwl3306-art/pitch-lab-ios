@@ -12,4 +12,13 @@ final class PracticeScoringTests: XCTestCase {
     func testMissingPitchIsNotAccurate() {
         XCTAssertFalse(PracticeScoring.isAccurate(frequency: nil, targetMIDI: 69))
     }
+
+    func testChangingTargetResetsCurrentResult() {
+        var session = PracticeSession(notes: [69, 71])
+        session.accept(frequency: 440)
+        XCTAssertTrue(session.currentPassed)
+        session.next()
+        XCTAssertEqual(session.currentMIDI, 71)
+        XCTAssertFalse(session.currentPassed)
+    }
 }
