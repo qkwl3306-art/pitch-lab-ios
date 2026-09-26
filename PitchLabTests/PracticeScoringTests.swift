@@ -40,4 +40,14 @@ final class PracticeScoringTests: XCTestCase {
         session.setTransposition(-20)
         XCTAssertEqual(session.transposition, -12)
     }
+
+    func testPassedNotesAccumulateAndResetAfterTransposition() {
+        var session = PracticeSession(notes: [69, 71])
+        session.accept(frequency: NoteMath.frequency(midi: 69))
+        session.next()
+        session.accept(frequency: NoteMath.frequency(midi: 71))
+        XCTAssertEqual(session.passedCount, 2)
+        session.setTransposition(-1)
+        XCTAssertEqual(session.passedCount, 0)
+    }
 }
