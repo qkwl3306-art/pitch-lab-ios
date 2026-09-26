@@ -35,6 +35,16 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab.tests
         GENERATE_INFOPLIST_FILE: YES
+  PitchLabUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources: [PitchLabUITests]
+    dependencies:
+      - target: PitchLab
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab.uitests
+        GENERATE_INFOPLIST_FILE: YES
 schemes:
   PitchLab:
     build:
@@ -44,3 +54,4 @@ schemes:
     test:
       targets:
         - PitchLabTests
+        - PitchLabUITests

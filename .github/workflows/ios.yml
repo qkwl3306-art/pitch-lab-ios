@@ -1,7 +1,7 @@
 name: Build iOS
 on:
   push:
-    branches: [main, feat/native-music-tools]
+    branches: [main, feat/native-music-tools, fix/iphone-layout-and-tab-crashes]
   workflow_dispatch:
 
 jobs:
@@ -24,7 +24,15 @@ jobs:
           SIM_ID=$(xcrun simctl list devices available -j | python3 -c 'import json,sys; d=json.load(sys.stdin)["devices"]; print(next(v["udid"] for devices in d.values() for v in devices if "iPhone" in v["name"] and v["state"] != "unavailable"))')
           echo "id=$SIM_ID" >> "$GITHUB_OUTPUT"
       - name: Run unit tests
-        run: xcodebuild test -project PitchLab.xcodeproj -scheme PitchLab -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' CODE_SIGNING_ALLOWED=NO
+        run: xcodebuild test -project PitchLab.xcodeproj -scheme PitchLab -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}' -resultBundlePath TestResults.xcresult CODE_SIGNING_ALLOWED=NO
+      - name: Upload test diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: PitchLab-test-diagnostics
+          path: |
+            TestResults.xcresult
+            ~/Library/Logs/DiagnosticReports
       - name: Build unsigned device app
         run: xcodebuild build -project PitchLab.xcodeproj -scheme PitchLab -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO
       - name: Package unsigned IPA
