@@ -21,4 +21,15 @@ final class MusicXMLParserTests: XCTestCase {
     func testRejectsMalformedXML() {
         XCTAssertThrowsError(try MusicXMLParser.parse(data: Data("<score-partwise><part>".utf8)))
     }
+
+    func testUsesOnlyFirstVoiceWithinFirstPart() throws {
+        let xml = """
+        <score-partwise><part id="P1"><measure number="1">
+          <note><pitch><step>C</step><octave>4</octave></pitch><voice>1</voice></note>
+          <backup><duration>1</duration></backup>
+          <note><pitch><step>E</step><octave>4</octave></pitch><voice>2</voice></note>
+        </measure></part></score-partwise>
+        """
+        XCTAssertEqual(try MusicXMLParser.parse(data: Data(xml.utf8)), [60])
+    }
 }
