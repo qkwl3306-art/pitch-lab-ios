@@ -31,6 +31,7 @@ targets:
     sources: [PitchLabTests]
     dependencies:
       - target: PitchLab
+      - package: ZIPFoundation
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab.tests
