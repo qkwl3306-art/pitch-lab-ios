@@ -27,6 +27,24 @@ targets:
         CFBundleDisplayName: 音律实验室
         NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
         UILaunchScreen: {}
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: PitchLab Scores
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - com.qkwl3306art.pitchlab.svp
+              - public.midi-audio
+              - com.qkwl3306art.pitchlab.musicxml
+              - com.qkwl3306art.pitchlab.mxl
+              - public.xml
+              - com.adobe.pdf
+              - public.image
+          - CFBundleTypeName: PitchLab Lyrics
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - com.qkwl3306art.pitchlab.lrc
+              - public.plain-text
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: com.qkwl3306art.pitchlab.svp
             UTTypeDescription: Synthesizer V Project
