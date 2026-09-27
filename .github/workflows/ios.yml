@@ -1,7 +1,7 @@
 name: Build iOS
 on:
   push:
-    branches: [main, feat/native-music-tools, fix/iphone-layout-and-tab-crashes, feat/phrase-singing, feat/singing-audio]
+    branches: [main, feat/native-music-tools, fix/iphone-layout-and-tab-crashes, feat/phrase-singing, feat/singing-audio, feat/continuous-self-paced-singing]
   workflow_dispatch:
 
 jobs:
