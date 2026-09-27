@@ -15,8 +15,17 @@ enum PhraseBuilder {
         let minimumGap = max(0.1, score.beatDuration * 2)
         var starts = [0]
         for index in 1..<notes.count {
-            let previousEnd = notes[index - 1].onset + notes[index - 1].duration
-            if notes[index].onset - previousEnd >= minimumGap {
+            let previous = notes[index - 1]
+            let current = notes[index]
+            let shouldSplit: Bool
+            if let beatStart = current.beatOnset,
+               let previousBeatStart = previous.beatOnset,
+               let previousBeatDuration = previous.beatDuration {
+                shouldSplit = beatStart - previousBeatStart - previousBeatDuration >= 2
+            } else {
+                shouldSplit = current.onset - previous.onset - previous.duration >= minimumGap
+            }
+            if shouldSplit {
                 starts.append(index)
             }
         }

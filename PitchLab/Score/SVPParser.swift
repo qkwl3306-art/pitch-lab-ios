@@ -38,10 +38,15 @@ enum SVPParser {
             }
             let onsetSeconds = tempo.seconds(at: absoluteOnset)
             let endSeconds = tempo.seconds(at: absoluteEnd)
+            guard onsetSeconds.isFinite, endSeconds.isFinite, endSeconds > onsetSeconds else {
+                throw SVPParseError.invalidNote
+            }
             notes.append((index, VocalNote(onset: onsetSeconds,
                                           duration: endSeconds - onsetSeconds,
                                           midi: midi,
-                                          lyric: raw.lyrics)))
+                                          lyric: raw.lyrics,
+                                          beatOnset: absoluteOnset / blicksPerQuarter,
+                                          beatDuration: duration / blicksPerQuarter)))
         }
         guard !notes.isEmpty else { throw SVPParseError.noSingingNotes }
         notes.sort {
@@ -132,12 +137,15 @@ private struct TempoMap {
                   built.last?.position != event.position else {
                 throw SVPParseError.invalidTempo
             }
+            let secondsPerBlick = (60 / event.bpm) / SVPParser.blicksPerQuarter
+            guard secondsPerBlick.isFinite, secondsPerBlick > 0 else { throw SVPParseError.invalidTempo }
             let elapsed = built.last.map { previous in
                 previous.seconds + (event.position - previous.position) * previous.secondsPerBlick
             } ?? 0
+            guard elapsed.isFinite else { throw SVPParseError.invalidTempo }
             built.append(Segment(position: event.position,
                                  seconds: elapsed,
-                                 secondsPerBlick: 60 / (event.bpm * SVPParser.blicksPerQuarter)))
+                                 secondsPerBlick: secondsPerBlick))
         }
         firstBPM = first.bpm
         segments = built

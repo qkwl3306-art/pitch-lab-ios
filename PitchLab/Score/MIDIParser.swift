@@ -59,7 +59,9 @@ enum MIDIParser {
         }.map {
             VocalNote(onset: tempoMap.seconds(at: $0.start),
                       duration: tempoMap.seconds(at: $0.end) - tempoMap.seconds(at: $0.start),
-                      midi: $0.pitch, lyric: nil)
+                      midi: $0.pitch, lyric: nil,
+                      beatOnset: Double($0.start) / Double(division),
+                      beatDuration: Double($0.end - $0.start) / Double(division))
         }
         return VocalScore(notes: notes, title: selected.name ?? "MIDI Melody",
                           beatDuration: Double(tempoMap.initialMicrosecondsPerQuarter) / 1_000_000)

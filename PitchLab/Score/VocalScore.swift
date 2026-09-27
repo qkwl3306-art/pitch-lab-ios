@@ -5,6 +5,18 @@ struct VocalNote: Codable, Equatable {
     let duration: Double
     let midi: Int
     let lyric: String?
+    let beatOnset: Double?
+    let beatDuration: Double?
+
+    init(onset: Double, duration: Double, midi: Int, lyric: String?,
+         beatOnset: Double? = nil, beatDuration: Double? = nil) {
+        self.onset = onset
+        self.duration = duration
+        self.midi = midi
+        self.lyric = lyric
+        self.beatOnset = beatOnset
+        self.beatDuration = beatDuration
+    }
 }
 
 struct VocalScore: Codable, Equatable {
