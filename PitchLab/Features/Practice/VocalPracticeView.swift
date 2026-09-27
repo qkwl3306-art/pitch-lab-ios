@@ -55,9 +55,9 @@ struct VocalPracticeView: View {
             lyricControls
             rangeControls
         }
-        .fileImporter(isPresented: $showLyricsFile, allowedContentTypes: FileImportTypes.lyrics) { result in
-            do { try store.importLyrics(at: result.get(), for: current) }
-            catch { errorMessage = error.localizedDescription }
+        .sheet(isPresented: $showLyricsFile) {
+            FileDocumentPicker(onPick: importLyrics, onCancel: { showLyricsFile = false })
+                .ignoresSafeArea()
         }
         .sheet(isPresented: $showPaste) {
             NavigationStack {
@@ -137,6 +137,18 @@ struct VocalPracticeView: View {
         }
         .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func importLyrics(_ url: URL) {
+        showLyricsFile = false
+        do {
+            guard FileImportTypes.isSupportedLyricsExtension(url.pathExtension) else {
+                throw ScoreImportError.unsupportedFormat
+            }
+            try store.importLyrics(at: url, for: current)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private var rangeControls: some View {

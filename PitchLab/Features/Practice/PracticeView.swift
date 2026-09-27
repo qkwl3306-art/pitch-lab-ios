@@ -37,13 +37,9 @@ struct PracticeView: View {
                     }
                 }
             }
-            .fileImporter(isPresented: $showFiles, allowedContentTypes: FileImportTypes.allowed) { result in
-                do {
-                    let score = try store.importFile(at: result.get())
-                    open(score)
-                } catch {
-                    errorMessage = error.localizedDescription
-                }
+            .sheet(isPresented: $showFiles) {
+                FileDocumentPicker(onPick: importScore, onCancel: { showFiles = false })
+                    .ignoresSafeArea()
             }
             .onChange(of: photoItem) { _, item in
                 guard let item else { return }
@@ -274,6 +270,18 @@ struct PracticeView: View {
     private func open(_ score: StoredScore) {
         selectedID = score.id
         model.select(score)
+    }
+
+    private func importScore(_ url: URL) {
+        showFiles = false
+        do {
+            guard FileImportTypes.isSupportedScoreExtension(url.pathExtension) else {
+                throw ScoreImportError.unsupportedFormat
+            }
+            open(try store.importFile(at: url))
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func seedVocalScoreForUITest() {
