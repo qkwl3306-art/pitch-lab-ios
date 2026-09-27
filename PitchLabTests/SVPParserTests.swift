@@ -41,7 +41,32 @@ final class SVPParserTests: XCTestCase {
         """
         let score = try SVPParser.parse(data: Data(json.utf8))
         XCTAssertEqual(score.title, "Vocal")
-        XCTAssertEqual(score.notes, [VocalNote(onset: 0.5, duration: 0.5, midi: 62, lyric: "oh")])
+        XCTAssertEqual(score.notes, [VocalNote(onset: 0.5, duration: 0.5, midi: 62, lyric: "oh",
+                                               beatOnset: 1, beatDuration: 1)])
+    }
+
+    func testPhraseGapUsesQuarterNotesAfterTempoChange() throws {
+        let json = """
+        {"version":153,"time":{"tempo":[{"position":0,"bpm":120},{"position":705600000,"bpm":60}]},
+         "tracks":[{"name":"Vocal","mainGroup":{"notes":[
+           {"onset":705600000,"duration":705600000,"pitch":60},
+           {"onset":2469600000,"duration":705600000,"pitch":62}]}}]}
+        """
+        let score = try SVPParser.parse(data: Data(json.utf8))
+        XCTAssertEqual(score.notes[0].beatOnset, 1)
+        XCTAssertEqual(score.notes[1].beatOnset, 3.5)
+        XCTAssertEqual(PhraseBuilder.make(score: score).count, 1)
+    }
+
+    func testRejectsExtremeTemposThatCannotProduceFinitePositiveTiming() {
+        for bpm in ["1e308", "1e-308"] {
+            let json = """
+            {"version":153,"time":{"tempo":[{"position":0,"bpm":\(bpm)}]},
+             "tracks":[{"mainGroup":{"notes":[
+               {"onset":0,"duration":705600000,"pitch":60}]}}]}
+            """
+            XCTAssertThrowsError(try SVPParser.parse(data: Data(json.utf8)), bpm)
+        }
     }
 
     func testRejectsMalformedUnsupportedEmptyAndInvalidDuration() {
