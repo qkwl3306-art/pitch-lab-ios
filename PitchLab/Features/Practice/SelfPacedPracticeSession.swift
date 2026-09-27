@@ -99,7 +99,7 @@ struct SelfPacedPracticeSession {
         skippedNoteIndices.remove(currentNoteIndex)
         lastPassedTargetMIDI = targetMIDI
         observedPitchBreakSinceLastPass = false
-        stablePitchSince = nil
+        self.stablePitchSince = nil
 
         var didExpandStage = false
         switch mode {
@@ -120,7 +120,7 @@ struct SelfPacedPracticeSession {
                     moveTarget(to: noteRange.lowerBound)
                     didExpandStage = true
                 } else if stagePassed {
-                    currentNoteIndex = nil
+                    self.currentNoteIndex = nil
                 } else {
                     moveTarget(to: stageRange.first(where: { !passedNoteIndices.contains($0) }) ?? progressiveEndIndex)
                 }
@@ -129,7 +129,7 @@ struct SelfPacedPracticeSession {
             if currentNoteIndex + 1 < noteRange.upperBound {
                 moveTarget(to: currentNoteIndex + 1)
             } else {
-                currentNoteIndex = nil
+                self.currentNoteIndex = nil
             }
         }
 
