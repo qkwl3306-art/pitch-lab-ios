@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 private struct SavedPhraseProgress: Codable {
+    var shift: Int
     var attempts: [Int: Int]
     var passed: Set<Int>
     var lastFeedback: [Int: PhraseFeedback]
@@ -39,13 +40,11 @@ struct VocalPracticeView: View {
         VStack(alignment: .leading, spacing: 16) {
             Text("人声旋律 · \(melody?.notes.count ?? 0) 个音符 · \(phrases.count) 句")
                 .font(.headline)
-            lyricControls
-            rangeControls
             if let melody, let phrase {
                 phraseControls(melody: melody, phrase: phrase)
                 PitchLane(score: melody, phrase: phrase, shift: shift, readings: model.readings,
-                    feedback: model.feedback ?? lastFeedback[selectedPhrase])
-                    .frame(height: 210)
+                          feedback: model.feedback ?? lastFeedback[selectedPhrase])
+                    .frame(height: 170)
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
                 practiceControls(melody: melody, phrase: phrase)
@@ -53,6 +52,8 @@ struct VocalPracticeView: View {
             } else {
                 ContentUnavailableView("没有可练习的旋律", systemImage: "music.note")
             }
+            lyricControls
+            rangeControls
         }
         .fileImporter(isPresented: $showLyricsFile, allowedContentTypes: [.plainText, .data]) { result in
             do { try store.importLyrics(at: result.get(), for: current) }
@@ -334,7 +335,8 @@ struct VocalPracticeView: View {
     private var progressKey: String { "phrase-progress-\(score.id.uuidString)" }
 
     private func saveProgress() {
-        let progress = SavedPhraseProgress(attempts: attempts, passed: passed, lastFeedback: lastFeedback)
+        let progress = SavedPhraseProgress(shift: shift, attempts: attempts, passed: passed,
+                                           lastFeedback: lastFeedback)
         if let data = try? JSONEncoder().encode(progress) {
             UserDefaults.standard.set(data, forKey: progressKey)
         }
@@ -346,6 +348,7 @@ struct VocalPracticeView: View {
         attempts = saved.attempts
         passed = saved.passed
         lastFeedback = saved.lastFeedback
+        shift = saved.shift
     }
 }
 

@@ -26,6 +26,7 @@ struct PracticeView: View {
             }
             .background(Color(.systemGroupedBackground))
             .navigationTitle(selectedScore?.name ?? "练唱")
+            .navigationBarTitleDisplayMode(selectedScore?.kind == .vocal ? .inline : .automatic)
             .toolbar {
                 if selectedScore != nil {
                     ToolbarItem(placement: .topBarLeading) {
