@@ -26,6 +26,7 @@
 **Files:**
 - Create: `PitchLab/Features/Practice/SelfPacedPracticeSession.swift`
 - Test: `PitchLabTests/SelfPacedPracticeSessionTests.swift`
+- Modify: `.github/workflows/ios.yml` to run the existing validation workflow for `feat/continuous-self-paced-singing`.
 - Modify: `project.yml` only if the new source/test files are not included by the existing directory source globs.
 
 **Interfaces:**
@@ -37,7 +38,7 @@
 - `SelfPacedPitchUpdate` returns current cents, whether the target just passed, and whether the exercise stage/phrase completed.
 
 - [ ] **Step 1: Add failing state tests** for mode initialization, bad-pitch retry, in-tune stable confirmation, nil/short-pause tolerance, manual advancement and skip, progressive prefix growth, whole-phrase auto-advance, consecutive repeated notes requiring a new pitch attack or manual advance, and final completion retaining the session for retry.
-- [ ] **Step 2: Run the new tests in macOS CI** and confirm the missing state type causes the focused test build to fail. Do not attempt to run Xcode on Windows.
+- [ ] **Step 2: Add `feat/continuous-self-paced-singing` to the workflow's existing `push.branches` list, push the test-only commit, and run the macOS CI suite.** Confirm the expected failure is the missing state type at compile time. Do not attempt to run Xcode on Windows.
 - [ ] **Step 3: Implement the smallest pure state machine** with one authoritative current index. In progressive mode, set the initial end index to the first note; after the full prefix is accurately sung, increment the end index and reset the current index to the phrase start. In whole-phrase mode, auto-advance only after stable confirmation. In note-by-note mode, mark accurate notes passed but wait for `advance()`.
 - [ ] **Step 4: Implement explicit skip and retry semantics.** Skipping records the current note index as unresolved and advances; note-by-note advance uses the same rule if the note is still inaccurate. Retry clears that note's unresolved state and resets its stable-pitch window. Restart returns to the first note and clears attempt-local results.
 - [ ] **Step 5: Run the focused state tests** and verify short nil-pitch gaps do not mark misses, stable readings do, and accurate/skip sets remain disjoint.
@@ -100,5 +101,6 @@
 
 - Every design feature maps to a task: shared continuous session (Task 2), three learning modes and pause/retry/skip behavior (Tasks 1–3), live note scrolling/feedback (Task 3), microphone errors and retained session summary (Task 2), and CI/IPA delivery (Task 4).
 - Tests exercise the pure progression rules and UI entry points. State-machine tests should verify stability and pauses without requiring hardware audio.
+- The existing iOS workflow is the only available Xcode runner; adding this feature branch to its trigger enables the required red/green TDD checks before merging.
 - The spec's existing ±50-cent threshold is unchanged; stable confirmation is a duration requirement, not a looser scoring threshold.
 - No new dependency or unsupported deployment target is introduced.
