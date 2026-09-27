@@ -24,4 +24,19 @@ final class PhraseBuilderTests: XCTestCase {
         let txt = PhraseBuilder.attachLyrics([LyricLine(time: nil, text: "一"), LyricLine(time: nil, text: "二")], to: phrases)
         XCTAssertEqual(txt.map(\.text), ["一", "二"])
     }
+
+    func testBoundaryCanMoveOneNoteWithoutDroppingNotes() throws {
+        let score = VocalScore(notes: [
+            VocalNote(onset: 0, duration: 0.5, midi: 60, lyric: nil),
+            VocalNote(onset: 0.5, duration: 0.5, midi: 62, lyric: nil),
+            VocalNote(onset: 3, duration: 0.5, midi: 64, lyric: nil),
+            VocalNote(onset: 3.5, duration: 0.5, midi: 65, lyric: nil)
+        ], title: "歌")
+        let original = PhraseBuilder.make(score: score)
+        let moved = try XCTUnwrap(PhraseBuilder.moveBoundary(after: 0, by: 1, in: original, score: score))
+        XCTAssertEqual(moved.map(\.noteRange), [0..<3, 3..<4])
+        XCTAssertEqual(moved[0].end, 3.5)
+        XCTAssertEqual(moved[1].start, 3.5)
+        XCTAssertNil(PhraseBuilder.moveBoundary(after: 0, by: 2, in: original, score: score))
+    }
 }
