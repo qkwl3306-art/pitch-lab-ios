@@ -57,6 +57,7 @@ final class SelfPacedPracticeSessionTests: XCTestCase {
         XCTAssertEqual(session.currentNoteIndex, 0)
         XCTAssertEqual(session.progressiveEndIndex, 1)
 
+        _ = session.observe(frequency: nil, targetMIDI: 60, at: 1.5)
         XCTAssertFalse(confirm(&session, midi: 60, at: 2.0).didExpandStage)
         XCTAssertTrue(confirm(&session, midi: 62, at: 2.5).didExpandStage)
         XCTAssertEqual(session.currentNoteIndex, 0)
@@ -82,7 +83,7 @@ final class SelfPacedPracticeSessionTests: XCTestCase {
         XCTAssertEqual(session.currentNoteIndex, 1)
 
         _ = session.observe(frequency: nil, targetMIDI: 60, at: 2.4)
-        XCTAssertTrue(session.observe(frequency: NoteMath.frequency(midi: 60), targetMIDI: 60, at: 2.5).didPass == false)
+        XCTAssertFalse(session.observe(frequency: NoteMath.frequency(midi: 60), targetMIDI: 60, at: 2.5).didPass)
         XCTAssertTrue(session.observe(frequency: NoteMath.frequency(midi: 60), targetMIDI: 60, at: 2.8).didPass)
         XCTAssertNil(session.currentNoteIndex)
     }
