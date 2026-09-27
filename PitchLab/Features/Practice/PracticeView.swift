@@ -250,6 +250,9 @@ struct PracticeView: View {
             }
             .padding(20)
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24))
+        case .vocal:
+            Text("人声旋律 · \(score.notes.count) 个音符")
+                .font(.headline)
         }
     }
 
@@ -258,6 +261,7 @@ struct PracticeView: View {
         case .musicXML: "music.note.list"
         case .pdf: "doc.richtext"
         case .image: "photo"
+        case .vocal: "waveform"
         }
     }
 

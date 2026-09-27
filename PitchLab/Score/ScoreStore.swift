@@ -7,14 +7,43 @@ enum ScoreKind: String, Codable, Hashable {
     case musicXML
     case pdf
     case image
+    case vocal
 }
 
-struct StoredScore: Identifiable, Codable, Hashable {
+struct StoredScore: Identifiable, Codable {
     let id: UUID
     let name: String
     let fileName: String
     let kind: ScoreKind
     let notes: [Int]
+    let vocalScore: VocalScore?
+    var phrases: [VocalPhrase]
+
+    init(id: UUID, name: String, fileName: String, kind: ScoreKind, notes: [Int],
+         vocalScore: VocalScore? = nil, phrases: [VocalPhrase] = []) {
+        self.id = id
+        self.name = name
+        self.fileName = fileName
+        self.kind = kind
+        self.notes = notes
+        self.vocalScore = vocalScore
+        self.phrases = phrases
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, fileName, kind, notes, vocalScore, phrases
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        fileName = try values.decode(String.self, forKey: .fileName)
+        kind = try values.decode(ScoreKind.self, forKey: .kind)
+        notes = try values.decode([Int].self, forKey: .notes)
+        vocalScore = try values.decodeIfPresent(VocalScore.self, forKey: .vocalScore)
+        phrases = try values.decodeIfPresent([VocalPhrase].self, forKey: .phrases) ?? []
+    }
 }
 
 @MainActor
@@ -24,9 +53,9 @@ final class ScoreStore: ObservableObject {
     private let directory: URL
     private let manifestURL: URL
 
-    init() {
+    init(directory customDirectory: URL? = nil) {
         let documents = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        directory = documents.appendingPathComponent("ImportedScores", isDirectory: true)
+        directory = customDirectory ?? documents.appendingPathComponent("ImportedScores", isDirectory: true)
         manifestURL = directory.appendingPathComponent("scores.json")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         if let data = try? Data(contentsOf: manifestURL),
@@ -55,6 +84,14 @@ final class ScoreStore: ObservableObject {
             let xml = try MXLLoader.load(data: data)
             let notes = try MusicXMLParser.parse(data: xml)
             return try add(data: data, name: name, kind: .musicXML, notes: notes, ext: "mxl")
+        case "svp":
+            let vocal = try SVPParser.parse(data: data)
+            return try add(data: data, name: name, kind: .vocal, notes: vocal.notes.map(\.midi),
+                           ext: "svp", vocalScore: vocal, phrases: PhraseBuilder.make(score: vocal))
+        case "mid", "midi":
+            let vocal = try MIDIParser.parse(data: data)
+            return try add(data: data, name: name, kind: .vocal, notes: vocal.notes.map(\.midi),
+                           ext: ext, vocalScore: vocal, phrases: PhraseBuilder.make(score: vocal))
         case "pdf":
             guard let document = PDFDocument(data: data), document.pageCount > 0 else { throw ScoreImportError.invalidPDF }
             return try add(data: data, name: name, kind: .pdf, notes: [], ext: "pdf")
@@ -80,12 +117,52 @@ final class ScoreStore: ObservableObject {
         try? saveManifest()
     }
 
-    private func add(data: Data, name: String, kind: ScoreKind, notes: [Int], ext: String) throws -> StoredScore {
+    @discardableResult
+    func importLyrics(at source: URL, for score: StoredScore) throws -> StoredScore {
+        guard score.kind == .vocal, let index = items.firstIndex(where: { $0.id == score.id }) else {
+            throw ScoreImportError.noMelody
+        }
+        let access = source.startAccessingSecurityScopedResource()
+        defer { if access { source.stopAccessingSecurityScopedResource() } }
+        let data = try Data(contentsOf: source)
+        guard data.count <= 1_000_000 else { throw ScoreImportError.fileTooLarge }
+        let lines: [LyricLine]
+        switch source.pathExtension.lowercased() {
+        case "lrc": lines = try LyricsParser.parseLRC(data: data)
+        case "txt": lines = try LyricsParser.parseTXT(data: data)
+        default: throw ScoreImportError.unsupportedFormat
+        }
+        let previous = items[index]
+        items[index].phrases = PhraseBuilder.attachLyrics(lines, to: previous.phrases)
+        do {
+            try saveManifest()
+        } catch {
+            items[index] = previous
+            throw error
+        }
+        return items[index]
+    }
+
+    @discardableResult
+    func updatePhrases(_ phrases: [VocalPhrase], for score: StoredScore) throws -> StoredScore {
+        guard let index = items.firstIndex(where: { $0.id == score.id }) else { throw ScoreImportError.noMelody }
+        let previous = items[index]
+        items[index].phrases = phrases
+        do { try saveManifest() } catch {
+            items[index] = previous
+            throw error
+        }
+        return items[index]
+    }
+
+    private func add(data: Data, name: String, kind: ScoreKind, notes: [Int], ext: String,
+                     vocalScore: VocalScore? = nil, phrases: [VocalPhrase] = []) throws -> StoredScore {
         let id = UUID()
         let fileName = "\(id.uuidString).\(ext)"
         let destination = directory.appendingPathComponent(fileName)
         try data.write(to: destination, options: .atomic)
-        let score = StoredScore(id: id, name: name.isEmpty ? "未命名乐谱" : name, fileName: fileName, kind: kind, notes: notes)
+        let score = StoredScore(id: id, name: name.isEmpty ? "未命名乐谱" : name, fileName: fileName,
+                                kind: kind, notes: notes, vocalScore: vocalScore, phrases: phrases)
         items.insert(score, at: 0)
         do {
             try saveManifest()
