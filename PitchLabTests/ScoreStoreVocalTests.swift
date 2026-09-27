@@ -50,4 +50,19 @@ final class ScoreStoreVocalTests: XCTestCase {
         XCTAssertNil(restored.items[0].vocalScore)
         XCTAssertTrue(restored.items[0].phrases.isEmpty)
     }
+
+    func testUnsupportedLargeFileReportsFormatBeforeReading() throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let source = directory.appendingPathComponent("movie.mp4")
+        try Data(repeating: 0, count: 15_000_001).write(to: source)
+        let store = ScoreStore(directory: directory.appendingPathComponent("scores"))
+        XCTAssertThrowsError(try store.importFile(at: source)) { error in
+            guard case ScoreImportError.unsupportedFormat = error else {
+                XCTFail("Unexpected error: \(error)")
+                return
+            }
+        }
+    }
 }
