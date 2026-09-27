@@ -83,7 +83,7 @@ final class MicrophonePitchService: ObservableObject {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playAndRecord, mode: captureMode, options: [.defaultToSpeaker])
-            if captureMode == .default, #available(iOS 18.0, *), session.isEchoCancelledInputAvailable {
+            if captureMode == .default, #available(iOS 18.2, *), session.isEchoCancelledInputAvailable {
                 try? session.setPrefersEchoCancelledInput(true)
             }
             try session.setActive(true)

@@ -47,7 +47,7 @@
 
 - [ ] **Step 1: Extend the renderer tests** to verify a transposed event changes pitch while keeping its onset and duration.
 - [ ] **Step 2: Implement one sequence player node** in `TonePlayer`; use `.playback/.default` for demonstration and preserve `.playAndRecord/.default` during practice. Set sequence gain to 0.62 (from 0.22 on the old note player). Stop and detach the sequence node on cancellation or completion.
-- [ ] **Step 3: Set microphone capture mode per start request** and request echo-canceled input on iOS 18+ only when the active built-in speaker/microphone route reports support; ignore optional echo-cancellation errors so recording still starts.
+- [ ] **Step 3: Set microphone capture mode per start request** and request echo-canceled input on iOS 18.2+ only when the active built-in speaker/microphone route reports support; ignore optional echo-cancellation errors so recording still starts.
 - [ ] **Step 4: Change preview to schedule the phrase once** instead of creating and detaching an audio node for every note.
 - [ ] **Step 5: Before microphone startup, build phrase events from the selected score range, apply `shift`, and render them off the main actor. After the existing countdown, set the scoring time origin and start the phrase player while recording.** Stop playback in `stop()` and `finish()`.
 - [ ] **Step 6: Run all existing phrase scoring, microphone, renderer, and UI tests.**
