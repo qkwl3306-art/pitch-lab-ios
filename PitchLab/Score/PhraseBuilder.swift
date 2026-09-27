@@ -30,9 +30,24 @@ enum PhraseBuilder {
             }
         }
         starts.append(notes.count)
-        return (0..<(starts.count - 1)).map { phraseIndex in
-            let lower = starts[phraseIndex]
-            let upper = starts[phraseIndex + 1]
+        var boundedStarts = [0]
+        for segment in 0..<(starts.count - 1) {
+            var lower = starts[segment]
+            let upper = starts[segment + 1]
+            while upper - lower > 16 {
+                let candidates = ((lower + 12)...(lower + 16)).filter { index in
+                    guard let beat = notes[index].beatOnset else { return false }
+                    return abs(beat.truncatingRemainder(dividingBy: 4)) < 0.1
+                }
+                let boundary = candidates.last ?? lower + 16
+                boundedStarts.append(boundary)
+                lower = boundary
+            }
+            boundedStarts.append(upper)
+        }
+        return (0..<(boundedStarts.count - 1)).map { phraseIndex in
+            let lower = boundedStarts[phraseIndex]
+            let upper = boundedStarts[phraseIndex + 1]
             return VocalPhrase(
                 id: phraseIndex,
                 noteRange: lower..<upper,

@@ -39,4 +39,16 @@ final class PhraseBuilderTests: XCTestCase {
         XCTAssertEqual(moved[1].start, 3.5)
         XCTAssertNil(PhraseBuilder.moveBoundary(after: 0, by: 2, in: original, score: score))
     }
+
+    func testLongContinuousMelodySplitsIntoManageablePhrases() {
+        let notes = (0..<40).map { index in
+            VocalNote(onset: Double(index) * 0.5, duration: 0.5, midi: 60,
+                      lyric: nil, beatOnset: Double(index), beatDuration: 1)
+        }
+        let score = VocalScore(notes: notes, title: "long")
+        let phrases = PhraseBuilder.make(score: score)
+        XCTAssertGreaterThan(phrases.count, 1)
+        XCTAssertTrue(phrases.allSatisfy { $0.noteRange.count <= 16 })
+        XCTAssertEqual(phrases.flatMap { Array($0.noteRange) }, Array(0..<40))
+    }
 }
