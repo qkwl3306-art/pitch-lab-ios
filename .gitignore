@@ -3,3 +3,4 @@ build/
 artifact/
 *.xcresult
 .DS_Store
+.worktrees/
