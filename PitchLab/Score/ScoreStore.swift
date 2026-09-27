@@ -72,9 +72,15 @@ final class ScoreStore: ObservableObject {
     func importFile(at source: URL) throws -> StoredScore {
         let access = source.startAccessingSecurityScopedResource()
         defer { if access { source.stopAccessingSecurityScopedResource() } }
+        let ext = source.pathExtension.lowercased()
+        guard ["musicxml", "xml", "mxl", "svp", "mid", "midi", "pdf",
+               "jpg", "jpeg", "png", "heic"].contains(ext) else {
+            throw ScoreImportError.unsupportedFormat
+        }
+        if let size = try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           size > 15_000_000 { throw ScoreImportError.fileTooLarge }
         let data = try Data(contentsOf: source)
         guard data.count <= 15_000_000 else { throw ScoreImportError.fileTooLarge }
-        let ext = source.pathExtension.lowercased()
         let name = source.deletingPathExtension().lastPathComponent
         switch ext {
         case "musicxml", "xml":
@@ -121,10 +127,14 @@ final class ScoreStore: ObservableObject {
     func importLyrics(at source: URL, for score: StoredScore) throws -> StoredScore {
         let access = source.startAccessingSecurityScopedResource()
         defer { if access { source.stopAccessingSecurityScopedResource() } }
+        let ext = source.pathExtension.lowercased()
+        guard ext == "lrc" || ext == "txt" else { throw ScoreImportError.unsupportedFormat }
+        if let size = try? source.resourceValues(forKeys: [.fileSizeKey]).fileSize,
+           size > 1_000_000 { throw ScoreImportError.fileTooLarge }
         let data = try Data(contentsOf: source)
         guard data.count <= 1_000_000 else { throw ScoreImportError.fileTooLarge }
         let lines: [LyricLine]
-        switch source.pathExtension.lowercased() {
+        switch ext {
         case "lrc": lines = try LyricsParser.parseLRC(data: data)
         case "txt": lines = try LyricsParser.parseTXT(data: data)
         default: throw ScoreImportError.unsupportedFormat
