@@ -132,7 +132,7 @@ private struct TempoMap {
         }
         var built: [Segment] = []
         for event in sorted {
-            guard event.position.isFinite, event.bpm.isFinite, event.bpm > 0,
+            guard event.position.isFinite, event.bpm.isFinite, (1...1_000).contains(event.bpm),
                   event.position >= 0,
                   built.last?.position != event.position else {
                 throw SVPParseError.invalidTempo

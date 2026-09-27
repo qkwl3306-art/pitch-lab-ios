@@ -65,4 +65,22 @@ enum PhraseBuilder {
         }
         return result
     }
+
+    static func moveBoundary(after index: Int, by delta: Int,
+                             in phrases: [VocalPhrase], score: VocalScore) -> [VocalPhrase]? {
+        guard phrases.indices.contains(index), phrases.indices.contains(index + 1), delta != 0 else { return nil }
+        var result = phrases
+        let left = result[index]
+        let right = result[index + 1]
+        let newBoundary = left.noteRange.upperBound + delta
+        guard newBoundary > left.noteRange.lowerBound,
+              newBoundary < right.noteRange.upperBound,
+              score.notes.indices.contains(newBoundary),
+              score.notes.indices.contains(newBoundary - 1) else { return nil }
+        result[index].noteRange = left.noteRange.lowerBound..<newBoundary
+        result[index].end = score.notes[newBoundary - 1].onset + score.notes[newBoundary - 1].duration
+        result[index + 1].noteRange = newBoundary..<right.noteRange.upperBound
+        result[index + 1].start = score.notes[newBoundary].onset
+        return result
+    }
 }

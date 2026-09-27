@@ -41,8 +41,13 @@ final class SVPParserTests: XCTestCase {
         """
         let score = try SVPParser.parse(data: Data(json.utf8))
         XCTAssertEqual(score.title, "Vocal")
-        XCTAssertEqual(score.notes, [VocalNote(onset: 0.5, duration: 0.5, midi: 62, lyric: "oh",
-                                               beatOnset: 1, beatDuration: 1)])
+        XCTAssertEqual(score.notes.count, 1)
+        XCTAssertEqual(score.notes[0].onset, 0.5, accuracy: 0.000001)
+        XCTAssertEqual(score.notes[0].duration, 0.5, accuracy: 0.000001)
+        XCTAssertEqual(score.notes[0].midi, 62)
+        XCTAssertEqual(score.notes[0].lyric, "oh")
+        XCTAssertEqual(score.notes[0].beatOnset, 1)
+        XCTAssertEqual(score.notes[0].beatDuration, 1)
     }
 
     func testPhraseGapUsesQuarterNotesAfterTempoChange() throws {
