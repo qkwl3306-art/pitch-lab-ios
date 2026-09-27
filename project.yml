@@ -20,13 +20,13 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab
         PRODUCT_NAME: PitchLab
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: 1
     info:
       path: PitchLab/Info.plist
       properties:
         CFBundleDisplayName: 音律实验室
         NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
+        UILaunchScreen: {}
         UTImportedTypeDeclarations:
           - UTTypeIdentifier: com.qkwl3306art.pitchlab.svp
             UTTypeDescription: Synthesizer V Project

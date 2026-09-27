@@ -44,8 +44,8 @@ jobs:
           path: TestScreenshots
       - name: Build unsigned device app
         run: xcodebuild build -project PitchLab.xcodeproj -scheme PitchLab -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' -derivedDataPath build CODE_SIGNING_ALLOWED=NO
-      - name: Verify full-screen launch configuration
-        run: python3 -c 'import plistlib; p="build/Build/Products/Release-iphoneos/PitchLab.app/Info.plist"; data=plistlib.load(open(p,"rb")); assert "UILaunchScreen" in data, data.keys()'
+      - name: Verify launch screen and imported file types
+        run: python3 -c 'import plistlib; p="build/Build/Products/Release-iphoneos/PitchLab.app/Info.plist"; data=plistlib.load(open(p,"rb")); assert "UILaunchScreen" in data, data.keys(); types=data["UTImportedTypeDeclarations"]; exts={ext for item in types for ext in item.get("UTTypeTagSpecification",{}).get("public.filename-extension",[])}; assert {"svp","musicxml","mxl","lrc"} <= exts, exts'
       - name: Package unsigned IPA
         shell: bash
         run: |
