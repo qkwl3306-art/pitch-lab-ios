@@ -2,6 +2,11 @@ import Combine
 import SwiftUI
 import UniformTypeIdentifiers
 
+private struct SavedPhraseProgress: Codable {
+    var attempts: [Int: Int]
+    var passed: Set<Int>
+}
+
 struct VocalPracticeView: View {
     @ObservedObject var store: ScoreStore
     let score: StoredScore
@@ -10,6 +15,8 @@ struct VocalPracticeView: View {
     @State private var shift = 0
     @State private var showLyricsFile = false
     @State private var showPaste = false
+    @State private var showPhraseText = false
+    @State private var phraseText = ""
     @State private var pastedLyrics = ""
     @State private var showRange = false
     @State private var rangeLow = UserDefaults.standard.integer(forKey: "vocal-range-low")
@@ -81,6 +88,25 @@ struct VocalPracticeView: View {
                 UserDefaults.standard.set(captured.high, forKey: "vocal-range-high")
             }
         }
+        .sheet(isPresented: $showPhraseText) {
+            NavigationStack {
+                TextEditor(text: $phraseText)
+                    .padding()
+                    .navigationTitle("编辑本句歌词")
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) { Button("取消") { showPhraseText = false } }
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("保存") {
+                                guard phrases.indices.contains(selectedPhrase) else { return }
+                                var changed = phrases
+                                changed[selectedPhrase].text = phraseText.trimmingCharacters(in: .whitespacesAndNewlines)
+                                do { try store.updatePhrases(changed, for: current); showPhraseText = false }
+                                catch { errorMessage = error.localizedDescription }
+                            }
+                        }
+                    }
+            }
+        }
         .alert("操作失败", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
             Button("好") { errorMessage = nil }
         } message: { Text(errorMessage ?? "未知错误") }
@@ -88,7 +114,9 @@ struct VocalPracticeView: View {
             guard let feedback else { return }
             attempts[selectedPhrase, default: 0] += 1
             if feedback.passed { passed.insert(selectedPhrase) }
+            saveProgress()
         }
+        .onAppear { loadProgress() }
         .onDisappear { model.stop() }
     }
 
@@ -118,30 +146,48 @@ struct VocalPracticeView: View {
                 Text("舒适音域 \(NoteMath.name(midi: range.low))～\(NoteMath.name(midi: range.high))")
                     .font(.subheadline)
                 if let melody {
-                    let advice = KeyRecommendation.recommend(notes: melody.notes.map(\.midi), range: range)
-                    Text("建议 \(advice.semitones == 0 ? "原调" : String(format: "%+d 半音", advice.semitones)) · 覆盖 \(advice.coveredNoteCount)/\(advice.totalNoteCount) 个音")
-                        .font(.subheadline)
-                    Button("应用建议调") { changeShift(to: advice.semitones) }
-                        .buttonStyle(.bordered)
+                    recommendation(melody: melody, range: range)
                 }
             } else {
                 Text("先唱出舒适的最低音和最高音，便可推荐整首歌的调。")
                     .font(.caption).foregroundStyle(.secondary)
             }
-            HStack {
-                Text("整首移调").font(.subheadline)
-                Spacer()
-                Button { changeShift(to: shift - 1) } label: { Image(systemName: "minus.circle.fill") }
-                    .disabled(shift <= -12)
-                Text(shift == 0 ? "原调" : String(format: "%+d", shift))
-                    .frame(minWidth: 48).monospacedDigit()
-                Button { changeShift(to: shift + 1) } label: { Image(systemName: "plus.circle.fill") }
-                    .disabled(shift >= 12)
-            }
-            .buttonStyle(.borderless)
+            transposeControls
         }
         .padding(16)
         .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
+    }
+
+    private func recommendation(melody: VocalScore, range: VocalRange) -> some View {
+        let advice = KeyRecommendation.recommend(notes: melody.notes.map(\.midi), range: range)
+        let keyName = advice.semitones == 0 ? "原调" : String(format: "%+d 半音", advice.semitones)
+        let lowName = advice.lowestNote.map(NoteMath.name(midi:)) ?? "—"
+        let highName = advice.highestNote.map(NoteMath.name(midi:)) ?? "—"
+        return VStack(alignment: .leading, spacing: 5) {
+            Text("建议 \(keyName) · 覆盖 \(advice.coveredNoteCount)/\(advice.totalNoteCount) 个音")
+            Text("原调覆盖 \(advice.originalCoveredNoteCount)/\(advice.totalNoteCount) · 建议调 \(lowName)～\(highName)")
+                .font(.caption).foregroundStyle(.secondary)
+            if advice.outOfRangeNoteCount > 0 {
+                Text("仍有 \(advice.outOfRangeNoteCount) 个音超出舒适音域")
+                    .font(.caption).foregroundStyle(.orange)
+            }
+            Button("应用建议调") { changeShift(to: advice.semitones) }
+                .buttonStyle(.bordered)
+        }
+    }
+
+    private var transposeControls: some View {
+        HStack {
+            Text("整首移调").font(.subheadline)
+            Spacer()
+            Button { changeShift(to: shift - 1) } label: { Image(systemName: "minus.circle.fill") }
+                .disabled(shift <= -12)
+            Text(shift == 0 ? "原调" : String(format: "%+d", shift))
+                .frame(minWidth: 48).monospacedDigit()
+            Button { changeShift(to: shift + 1) } label: { Image(systemName: "plus.circle.fill") }
+                .disabled(shift >= 12)
+        }
+        .buttonStyle(.borderless)
     }
 
     private func phraseControls(melody: VocalScore, phrase: VocalPhrase) -> some View {
@@ -149,8 +195,20 @@ struct VocalPracticeView: View {
             Text("第 \(selectedPhrase + 1) / \(phrases.count) 句")
                 .font(.headline)
             Text(phrase.text).font(.title3.bold())
+            Button("编辑本句歌词") { phraseText = phrase.text; showPhraseText = true }
+                .font(.caption)
             Text("\(phrase.noteRange.count) 个音 · 已练 \(attempts[selectedPhrase, default: 0]) 次 · \(passed.contains(selectedPhrase) ? "已达标" : "待达标")")
                 .font(.caption).foregroundStyle(.secondary)
+            ScrollView(.horizontal) {
+                HStack(spacing: 6) {
+                    ForEach(phrase.noteRange, id: \.self) { index in
+                        Text(NoteMath.name(midi: melody.notes[index].midi + shift))
+                            .font(.caption.monospacedDigit())
+                            .padding(6)
+                            .background(.mint.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+                    }
+                }
+            }
             ScrollView(.horizontal) {
                 HStack {
                     ForEach(phrases.indices, id: \.self) { index in
@@ -158,7 +216,8 @@ struct VocalPracticeView: View {
                             model.stop()
                             selectedPhrase = index
                         }
-                        .buttonStyle(index == selectedPhrase ? .borderedProminent : .bordered)
+                        .buttonStyle(.bordered)
+                        .tint(index == selectedPhrase ? .mint : .gray)
                     }
                 }
             }
@@ -253,6 +312,7 @@ struct VocalPracticeView: View {
         shift = value
         attempts = [:]
         passed = []
+        saveProgress()
     }
 
     private func moveBoundary(by delta: Int, melody: VocalScore) {
@@ -262,7 +322,24 @@ struct VocalPracticeView: View {
             try store.updatePhrases(changed, for: current)
             attempts = [:]
             passed = []
+            saveProgress()
         } catch { errorMessage = error.localizedDescription }
+    }
+
+    private var progressKey: String { "phrase-progress-\(score.id.uuidString)" }
+
+    private func saveProgress() {
+        let progress = SavedPhraseProgress(attempts: attempts, passed: passed)
+        if let data = try? JSONEncoder().encode(progress) {
+            UserDefaults.standard.set(data, forKey: progressKey)
+        }
+    }
+
+    private func loadProgress() {
+        guard let data = UserDefaults.standard.data(forKey: progressKey),
+              let saved = try? JSONDecoder().decode(SavedPhraseProgress.self, from: data) else { return }
+        attempts = saved.attempts
+        passed = saved.passed
     }
 }
 
