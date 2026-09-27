@@ -37,7 +37,7 @@ struct PracticeView: View {
                     }
                 }
             }
-            .fileImporter(isPresented: $showFiles, allowedContentTypes: [.pdf, .xml, .image, .data]) { result in
+            .fileImporter(isPresented: $showFiles, allowedContentTypes: FileImportTypes.allowed) { result in
                 do {
                     let score = try store.importFile(at: result.get())
                     open(score)

@@ -9,4 +9,11 @@ final class FileImportTypesTests: XCTestCase {
             XCTAssertTrue(FileImportTypes.allowed.contains { type.conforms(to: $0) }, ext)
         }
     }
+
+    func testLyricsPickerAcceptsLRCAndTXT() throws {
+        for ext in ["lrc", "txt"] {
+            let type = try XCTUnwrap(UTType(filenameExtension: ext), ext)
+            XCTAssertTrue(FileImportTypes.lyrics.contains { type.conforms(to: $0) }, ext)
+        }
+    }
 }

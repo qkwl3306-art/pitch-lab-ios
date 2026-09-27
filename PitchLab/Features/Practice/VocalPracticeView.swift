@@ -55,7 +55,7 @@ struct VocalPracticeView: View {
             lyricControls
             rangeControls
         }
-        .fileImporter(isPresented: $showLyricsFile, allowedContentTypes: [.plainText, .data]) { result in
+        .fileImporter(isPresented: $showLyricsFile, allowedContentTypes: FileImportTypes.lyrics) { result in
             do { try store.importLyrics(at: result.get(), for: current) }
             catch { errorMessage = error.localizedDescription }
         }
