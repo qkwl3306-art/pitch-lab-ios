@@ -14,6 +14,16 @@ final class KeyRecommendationTests: XCTestCase {
         XCTAssertEqual(advice.highestNote, 72)
     }
 
+    func testInvertedVocalRangeIsNormalized() {
+        let advice = KeyRecommendation.recommend(notes: [60, 72], range: VocalRange(low: 72, high: 60))
+
+        XCTAssertEqual(advice.semitones, 0)
+        XCTAssertEqual(advice.coveredNoteCount, 2)
+        XCTAssertEqual(advice.outOfRangeNoteCount, 0)
+        XCTAssertEqual(advice.coverage, 1)
+        XCTAssertEqual(advice.clearance, 0)
+    }
+
     func testCoverageTakesPriorityOverClearanceAndShiftSize() {
         let advice = KeyRecommendation.recommend(notes: [60, 67, 72], range: VocalRange(low: 61, high: 73))
 

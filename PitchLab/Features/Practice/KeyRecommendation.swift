@@ -23,6 +23,9 @@ struct KeyAdvice: Equatable {
 
 enum KeyRecommendation {
     static func recommend(notes: [Int], range: VocalRange) -> KeyAdvice {
+        let rangeLow = min(range.low, range.high)
+        let rangeHigh = max(range.low, range.high)
+
         guard let originalLow = notes.min(), let originalHigh = notes.max() else {
             return KeyAdvice(
                 semitones: 0,
@@ -36,13 +39,13 @@ enum KeyRecommendation {
             )
         }
 
-        let originalCoveredCount = notes.filter { range.low...range.high ~= $0 }.count
+        let originalCoveredCount = notes.filter { rangeLow...rangeHigh ~= $0 }.count
         var best: KeyAdvice?
 
         for semitones in -12...12 {
             let low = originalLow + semitones
             let high = originalHigh + semitones
-            let coveredCount = notes.filter { range.low...range.high ~= ($0 + semitones) }.count
+            let coveredCount = notes.filter { rangeLow...rangeHigh ~= ($0 + semitones) }.count
             let candidate = KeyAdvice(
                 semitones: semitones,
                 coveredNoteCount: coveredCount,
@@ -51,7 +54,7 @@ enum KeyRecommendation {
                 totalNoteCount: notes.count,
                 lowestNote: low,
                 highestNote: high,
-                clearance: min(low - range.low, range.high - high)
+                clearance: min(low - rangeLow, rangeHigh - high)
             )
 
             if let current = best {
