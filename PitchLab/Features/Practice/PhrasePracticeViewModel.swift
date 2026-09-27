@@ -19,9 +19,12 @@ final class PhrasePracticeViewModel: ObservableObject {
 
     private let microphone = MicrophonePitchService()
     private let player = TonePlayer()
+    private var scoringReadings: [TimedPitchReading] = []
+    private var displayLimiter = PitchDisplayLimiter()
     private var subscriptions = Set<AnyCancellable>()
     private var attemptTask: Task<Void, Never>?
     private var previewTask: Task<Void, Never>?
+    private var phraseRenderTask: Task<[Float], Never>?
     private var score: VocalScore?
     private var phrase: VocalPhrase?
     private var transposition = 0
@@ -43,10 +46,18 @@ final class PhrasePracticeViewModel: ObservableObject {
         }.store(in: &subscriptions)
         microphone.$pitchHz.sink { [weak self] hz in
             guard let self else { return }
+            let now = ProcessInfo.processInfo.systemUptime
+            if self.phase == .recording, let phrase = self.phrase {
+                let elapsed = now - self.recordingStart
+                self.scoringReadings.append(TimedPitchReading(time: phrase.start + elapsed, frequency: hz))
+            }
+            guard self.displayLimiter.shouldPublish(at: now) else { return }
             self.currentHz = hz
             guard self.phase == .recording, let phrase = self.phrase else { return }
-            let elapsed = ProcessInfo.processInfo.systemUptime - self.recordingStart
-            self.readings.append(TimedPitchReading(time: phrase.start + elapsed, frequency: hz))
+            let elapsed = now - self.recordingStart
+            let reading = TimedPitchReading(time: phrase.start + elapsed, frequency: hz)
+            if self.readings.count == 256 { self.readings.removeFirst() }
+            self.readings.append(reading)
         }.store(in: &subscriptions)
     }
 
@@ -56,9 +67,13 @@ final class PhrasePracticeViewModel: ObservableObject {
         self.phrase = phrase
         self.transposition = transposition
         feedback = nil
-        readings = []
+        resetReadings()
+        let events = Self.events(score: score, phrase: phrase, transposition: transposition)
+        phraseRenderTask = Task.detached(priority: .userInitiated) {
+            ToneSequenceRenderer.render(events: events)
+        }
         awaitingMicrophone = true
-        microphone.start()
+        microphone.start(mode: .default)
         if microphone.status == .listening, awaitingMicrophone {
             awaitingMicrophone = false
             startCountdown()
@@ -68,25 +83,22 @@ final class PhrasePracticeViewModel: ObservableObject {
     func preview(score: VocalScore, phrase: VocalPhrase, transposition: Int) {
         stop()
         feedback = nil
-        readings = []
+        resetReadings()
+        let events = Self.events(score: score, phrase: phrase, transposition: transposition)
+        let renderTask = Task.detached(priority: .userInitiated) {
+            ToneSequenceRenderer.render(events: events)
+        }
+        phraseRenderTask = renderTask
         previewTask = Task { [weak self] in
             guard let self else { return }
-            var elapsed = 0.0
-            for index in phrase.noteRange where score.notes.indices.contains(index) {
-                guard !Task.isCancelled else { break }
-                let note = score.notes[index]
-                let noteStart = note.onset - phrase.start
-                let gap = max(0, noteStart - elapsed)
-                if gap > 0 { try? await Task.sleep(for: .seconds(gap)) }
-                guard !Task.isCancelled else { break }
-                let midi = note.midi + transposition
-                player.noteOn(midi: midi)
-                try? await Task.sleep(for: .seconds(max(0.05, note.duration)))
-                player.noteOff(midi: midi)
-                elapsed = noteStart + note.duration
-            }
-            player.stopAll()
+            let samples = await renderTask.value
+            guard !Task.isCancelled else { return }
+            player.playPhrase(samples, duringCapture: false)
+            try? await Task.sleep(for: .seconds(max(0.1, phrase.end - phrase.start + ToneSequenceRenderer.releaseDuration)))
+            guard !Task.isCancelled else { return }
+            player.stopPhrase()
             previewTask = nil
+            phraseRenderTask = nil
         }
     }
 
@@ -95,6 +107,8 @@ final class PhrasePracticeViewModel: ObservableObject {
         attemptTask = nil
         previewTask?.cancel()
         previewTask = nil
+        phraseRenderTask?.cancel()
+        phraseRenderTask = nil
         awaitingMicrophone = false
         phase = .idle
         feedback = nil
@@ -112,9 +126,12 @@ final class PhrasePracticeViewModel: ObservableObject {
                 try? await Task.sleep(for: .seconds(1))
             }
             guard !Task.isCancelled, let phrase else { return }
-            readings = []
+            let samples = await phraseRenderTask?.value ?? []
+            guard !Task.isCancelled else { return }
+            resetReadings()
             recordingStart = ProcessInfo.processInfo.systemUptime
             phase = .recording
+            player.playPhrase(samples, duringCapture: true)
             try? await Task.sleep(for: .seconds(max(0.2, phrase.end - phrase.start + 0.15)))
             guard !Task.isCancelled else { return }
             finish()
@@ -124,10 +141,29 @@ final class PhrasePracticeViewModel: ObservableObject {
     private func finish() {
         phase = .finished
         microphone.stop()
+        player.stopPhrase()
         if let score, let phrase {
             feedback = PhraseScoring.evaluate(score: score, phrase: phrase,
-                                              readings: readings, transposition: transposition)
+                                              readings: scoringReadings, transposition: transposition)
         }
         attemptTask = nil
+        phraseRenderTask = nil
+    }
+
+    private func resetReadings() {
+        scoringReadings = []
+        readings = []
+        displayLimiter.reset()
+        currentHz = nil
+    }
+
+    private static func events(score: VocalScore, phrase: VocalPhrase, transposition: Int) -> [ToneSequenceEvent] {
+        let events = phrase.noteRange.compactMap { index in
+            guard score.notes.indices.contains(index) else { return nil }
+            let note = score.notes[index]
+            return ToneSequenceEvent(midi: note.midi,
+                                     onset: max(0, note.onset - phrase.start), duration: note.duration)
+        }
+        return ToneSequenceRenderer.transposed(events, by: transposition)
     }
 }

@@ -4,11 +4,11 @@ import XCTest
 final class ToneSequenceRendererTests: XCTestCase {
     func testRenderedPhrasePreservesSilenceOnsetAndAddsGentleBoundedTone() {
         let event = ToneSequenceEvent(midi: 69, onset: 0.1, duration: 0.4)
-        let samples = ToneSequenceRenderer.render(events: [event], sampleRate: 1_000)
+        let samples = ToneSequenceRenderer.render(events: [event], sampleRate: 8_000)
 
-        XCTAssertEqual(samples.count, 620)
-        XCTAssertTrue(samples.prefix(100).allSatisfy { $0 == 0 })
-        XCTAssertGreaterThan(samples[110...480].map(abs).max() ?? 0, 0.1)
+        XCTAssertEqual(samples.count, 4_960)
+        XCTAssertTrue(samples.prefix(800).allSatisfy { $0 == 0 })
+        XCTAssertGreaterThan(samples[880...4_000].map(abs).max() ?? 0, 0.8)
         XCTAssertTrue(samples.allSatisfy { $0.isFinite && abs($0) <= 1 })
     }
 

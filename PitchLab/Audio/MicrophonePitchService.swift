@@ -22,6 +22,7 @@ final class MicrophonePitchService: ObservableObject {
     private var captureIntent = CaptureIntent()
     private var tapInstalled = false
     private var interruptionObserver: NSObjectProtocol?
+    private var captureMode: AVAudioSession.Mode = .measurement
 
     init() {
         interruptionObserver = NotificationCenter.default.addObserver(
@@ -43,7 +44,8 @@ final class MicrophonePitchService: ObservableObject {
         }
     }
 
-    func start() {
+    func start(mode: AVAudioSession.Mode? = nil) {
+        if let mode { captureMode = mode }
         guard status != .listening, status != .requestingPermission else { return }
         let request = captureIntent.begin()
         switch AVAudioSession.sharedInstance().recordPermission {
@@ -80,7 +82,10 @@ final class MicrophonePitchService: ObservableObject {
     private func startEngine(request: Int) {
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playAndRecord, mode: .measurement, options: [.defaultToSpeaker])
+            try session.setCategory(.playAndRecord, mode: captureMode, options: [.defaultToSpeaker])
+            if captureMode == .default, #available(iOS 18.0, *), session.isEchoCancelledInputAvailable {
+                try? session.setPrefersEchoCancelledInput(true)
+            }
             try session.setActive(true)
             let input = engine.inputNode
             let format = input.outputFormat(forBus: 0)

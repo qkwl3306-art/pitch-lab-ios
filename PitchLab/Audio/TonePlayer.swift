@@ -6,6 +6,7 @@ final class TonePlayer {
     private let engine = AVAudioEngine()
     private let format = AVAudioFormat(standardFormatWithSampleRate: 44_100, channels: 1)!
     private var players: [Int: AVAudioPlayerNode] = [:]
+    private var phrasePlayer: AVAudioPlayerNode?
 
     func noteOn(midi: Int) {
         guard players[midi] == nil else { return }
@@ -37,8 +38,51 @@ final class TonePlayer {
         engine.detach(player)
     }
 
+    func playPhrase(_ samples: [Float], duringCapture: Bool) {
+        stopPhrase()
+        guard !samples.isEmpty,
+              let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(samples.count)) else { return }
+        buffer.frameLength = AVAudioFrameCount(samples.count)
+        samples.withUnsafeBufferPointer { source in
+            guard let baseAddress = source.baseAddress else { return }
+            buffer.floatChannelData![0].update(from: baseAddress, count: samples.count)
+        }
+
+        let player = AVAudioPlayerNode()
+        engine.attach(player)
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        do {
+            let session = AVAudioSession.sharedInstance()
+            if duringCapture {
+                try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker])
+            } else {
+                try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            }
+            try session.setActive(true)
+            if !engine.isRunning {
+                engine.prepare()
+                try engine.start()
+            }
+            player.volume = 0.62
+            player.scheduleBuffer(buffer, at: nil, options: [])
+            player.play()
+            phrasePlayer = player
+        } catch {
+            engine.detach(player)
+        }
+    }
+
+    func stopPhrase() {
+        guard let phrasePlayer else { return }
+        phrasePlayer.stop()
+        engine.detach(phrasePlayer)
+        self.phrasePlayer = nil
+        if players.isEmpty { engine.stop() }
+    }
+
     func stopAll() {
         for midi in Array(players.keys) { noteOff(midi: midi) }
+        stopPhrase()
         engine.stop()
     }
 
