@@ -158,7 +158,7 @@ final class PhrasePracticeViewModel: ObservableObject {
     }
 
     private static func events(score: VocalScore, phrase: VocalPhrase, transposition: Int) -> [ToneSequenceEvent] {
-        let events = phrase.noteRange.compactMap { index in
+        let events = phrase.noteRange.compactMap { index -> ToneSequenceEvent? in
             guard score.notes.indices.contains(index) else { return nil }
             let note = score.notes[index]
             return ToneSequenceEvent(midi: note.midi,
