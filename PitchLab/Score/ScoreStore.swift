@@ -119,9 +119,6 @@ final class ScoreStore: ObservableObject {
 
     @discardableResult
     func importLyrics(at source: URL, for score: StoredScore) throws -> StoredScore {
-        guard score.kind == .vocal, let index = items.firstIndex(where: { $0.id == score.id }) else {
-            throw ScoreImportError.noMelody
-        }
         let access = source.startAccessingSecurityScopedResource()
         defer { if access { source.stopAccessingSecurityScopedResource() } }
         let data = try Data(contentsOf: source)
@@ -131,6 +128,14 @@ final class ScoreStore: ObservableObject {
         case "lrc": lines = try LyricsParser.parseLRC(data: data)
         case "txt": lines = try LyricsParser.parseTXT(data: data)
         default: throw ScoreImportError.unsupportedFormat
+        }
+        return try setLyrics(lines, for: score)
+    }
+
+    @discardableResult
+    func setLyrics(_ lines: [LyricLine], for score: StoredScore) throws -> StoredScore {
+        guard score.kind == .vocal, let index = items.firstIndex(where: { $0.id == score.id }) else {
+            throw ScoreImportError.noMelody
         }
         let previous = items[index]
         items[index].phrases = PhraseBuilder.attachLyrics(lines, to: previous.phrases)

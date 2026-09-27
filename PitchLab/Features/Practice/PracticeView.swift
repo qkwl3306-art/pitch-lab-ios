@@ -76,7 +76,7 @@ struct PracticeView: View {
             VStack(alignment: .leading, spacing: 8) {
                 Text("导入乐谱，开始练唱")
                     .font(.title2.bold())
-                Text("支持 MusicXML、MXL、PDF 和乐谱照片。PDF 与照片可边看边唱；MusicXML 可逐音检查音准。")
+                Text("支持 SVP／MIDI 人声旋律、MusicXML、MXL、PDF 和乐谱照片。人声旋律可配歌词逐句练唱。")
                     .foregroundStyle(.secondary)
             }
             HStack {
@@ -105,7 +105,7 @@ struct PracticeView: View {
                                 .background(.mint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
                             VStack(alignment: .leading) {
                                 Text(score.name).font(.headline)
-                                Text(score.kind == .musicXML ? "\(score.notes.count) 个可练习音符" : "看谱练唱")
+                                Text(score.kind == .vocal ? "\(score.phrases.count) 句人声旋律" : score.kind == .musicXML ? "\(score.notes.count) 个可练习音符" : "看谱练唱")
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -126,6 +126,9 @@ struct PracticeView: View {
 
     private func practice(_ score: StoredScore) -> some View {
         VStack(alignment: .leading, spacing: 18) {
+            if score.kind == .vocal {
+                VocalPracticeView(store: store, score: score)
+            } else {
             scorePreview(score)
             if let session = model.session {
                 VStack(alignment: .leading, spacing: 14) {
@@ -211,6 +214,7 @@ struct PracticeView: View {
             Text("MusicXML 只读取首个分部的单声部旋律；手动切换目标音。连续唱准约 0.3 秒即达标。")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            }
         }
     }
 
