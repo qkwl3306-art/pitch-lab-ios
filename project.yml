@@ -20,11 +20,34 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab
         PRODUCT_NAME: PitchLab
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: 音律实验室
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         TARGETED_DEVICE_FAMILY: 1
+    info:
+      path: PitchLab/Info.plist
+      properties:
+        CFBundleDisplayName: 音律实验室
+        NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.qkwl3306art.pitchlab.svp
+            UTTypeDescription: Synthesizer V Project
+            UTTypeConformsTo: [public.json, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [svp]
+          - UTTypeIdentifier: com.qkwl3306art.pitchlab.musicxml
+            UTTypeDescription: MusicXML Score
+            UTTypeConformsTo: [public.xml, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [musicxml]
+          - UTTypeIdentifier: com.qkwl3306art.pitchlab.mxl
+            UTTypeDescription: Compressed MusicXML Score
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [mxl]
+          - UTTypeIdentifier: com.qkwl3306art.pitchlab.lrc
+            UTTypeDescription: LRC Lyrics
+            UTTypeConformsTo: [public.plain-text, public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [lrc]
   PitchLabTests:
     type: bundle.unit-test
     platform: iOS

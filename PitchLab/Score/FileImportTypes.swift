@@ -1,8 +1,11 @@
 import UniformTypeIdentifiers
 
 enum FileImportTypes {
-    // Files providers can assign dynamic types to SVP and LRC. Let the user select
-    // a file, then validate its extension and contents in ScoreStore/LyricsParser.
-    static let allowed: [UTType] = [.item]
-    static let lyrics: [UTType] = [.item]
+    static let svp = UTType(importedAs: "com.qkwl3306art.pitchlab.svp")
+    static let musicXML = UTType(importedAs: "com.qkwl3306art.pitchlab.musicxml")
+    static let mxl = UTType(importedAs: "com.qkwl3306art.pitchlab.mxl")
+    static let lrc = UTType(importedAs: "com.qkwl3306art.pitchlab.lrc")
+
+    static let allowed: [UTType] = [.pdf, .xml, .image, .midi, svp, musicXML, mxl]
+    static let lyrics: [UTType] = [.plainText, lrc]
 }
