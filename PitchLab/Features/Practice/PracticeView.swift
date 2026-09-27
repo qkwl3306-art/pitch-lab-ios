@@ -68,6 +68,7 @@ struct PracticeView: View {
                 Text(errorMessage ?? "未知错误")
             }
             .onDisappear { model.stop() }
+            .onAppear { seedVocalScoreForUITest() }
         }
     }
 
@@ -272,6 +273,27 @@ struct PracticeView: View {
     private func open(_ score: StoredScore) {
         selectedID = score.id
         model.select(score)
+    }
+
+    private func seedVocalScoreForUITest() {
+        #if DEBUG
+        guard ProcessInfo.processInfo.arguments.contains("--ui-test-vocal-score"),
+              !store.items.contains(where: { $0.name == "Vocal UI Test" }) else { return }
+        let sample = """
+        {"version":153,"time":{"tempo":[{"position":0,"bpm":120}]},
+         "tracks":[{"name":"Vocal UI Test","mainGroup":{"notes":[
+           {"onset":0,"duration":705600000,"pitch":60,"lyrics":"la"},
+           {"onset":705600000,"duration":705600000,"pitch":62,"lyrics":"la"},
+           {"onset":2822400000,"duration":705600000,"pitch":64,"lyrics":"la"}]}}]}
+        """
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Vocal UI Test.svp")
+        do {
+            try Data(sample.utf8).write(to: url)
+            let score = try store.importFile(at: url)
+            try store.setLyrics([LyricLine(time: nil, text: "第一句"),
+                                 LyricLine(time: nil, text: "第二句")], for: score)
+        } catch { errorMessage = error.localizedDescription }
+        #endif
     }
 }
 

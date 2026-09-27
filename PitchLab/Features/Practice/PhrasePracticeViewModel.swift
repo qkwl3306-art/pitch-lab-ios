@@ -97,6 +97,7 @@ final class PhrasePracticeViewModel: ObservableObject {
         previewTask = nil
         awaitingMicrophone = false
         phase = .idle
+        feedback = nil
         microphone.stop()
         player.stopAll()
     }

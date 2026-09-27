@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 private struct SavedPhraseProgress: Codable {
     var attempts: [Int: Int]
     var passed: Set<Int>
+    var lastFeedback: [Int: PhraseFeedback]
 }
 
 struct VocalPracticeView: View {
@@ -23,6 +24,7 @@ struct VocalPracticeView: View {
     @State private var rangeHigh = UserDefaults.standard.integer(forKey: "vocal-range-high")
     @State private var attempts: [Int: Int] = [:]
     @State private var passed: Set<Int> = []
+    @State private var lastFeedback: [Int: PhraseFeedback] = [:]
     @State private var errorMessage: String?
 
     private var current: StoredScore { store.items.first { $0.id == score.id } ?? score }
@@ -42,12 +44,12 @@ struct VocalPracticeView: View {
             if let melody, let phrase {
                 phraseControls(melody: melody, phrase: phrase)
                 PitchLane(score: melody, phrase: phrase, shift: shift, readings: model.readings,
-                          feedback: model.feedback)
+                    feedback: model.feedback ?? lastFeedback[selectedPhrase])
                     .frame(height: 210)
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
                 practiceControls(melody: melody, phrase: phrase)
-                if let feedback = model.feedback { results(feedback) }
+                if let feedback = model.feedback ?? lastFeedback[selectedPhrase] { results(feedback) }
             } else {
                 ContentUnavailableView("没有可练习的旋律", systemImage: "music.note")
             }
@@ -113,6 +115,7 @@ struct VocalPracticeView: View {
         .onChange(of: model.feedback) { _, feedback in
             guard let feedback else { return }
             attempts[selectedPhrase, default: 0] += 1
+            lastFeedback[selectedPhrase] = feedback
             if feedback.passed { passed.insert(selectedPhrase) }
             saveProgress()
         }
@@ -312,6 +315,7 @@ struct VocalPracticeView: View {
         shift = value
         attempts = [:]
         passed = []
+        lastFeedback = [:]
         saveProgress()
     }
 
@@ -322,6 +326,7 @@ struct VocalPracticeView: View {
             try store.updatePhrases(changed, for: current)
             attempts = [:]
             passed = []
+            lastFeedback = [:]
             saveProgress()
         } catch { errorMessage = error.localizedDescription }
     }
@@ -329,7 +334,7 @@ struct VocalPracticeView: View {
     private var progressKey: String { "phrase-progress-\(score.id.uuidString)" }
 
     private func saveProgress() {
-        let progress = SavedPhraseProgress(attempts: attempts, passed: passed)
+        let progress = SavedPhraseProgress(attempts: attempts, passed: passed, lastFeedback: lastFeedback)
         if let data = try? JSONEncoder().encode(progress) {
             UserDefaults.standard.set(data, forKey: progressKey)
         }
@@ -340,6 +345,7 @@ struct VocalPracticeView: View {
               let saved = try? JSONDecoder().decode(SavedPhraseProgress.self, from: data) else { return }
         attempts = saved.attempts
         passed = saved.passed
+        lastFeedback = saved.lastFeedback
     }
 }
 

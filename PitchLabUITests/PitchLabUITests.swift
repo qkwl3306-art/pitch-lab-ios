@@ -29,6 +29,20 @@ final class PitchLabUITests: XCTestCase {
         saveScreenshot(app, name: "练唱")
     }
 
+    func testVocalPhrasePracticeOpensAndChangesPhrase() {
+        let app = XCUIApplication()
+        app.launchArguments.append("--ui-test-vocal-score")
+        app.launch()
+        app.tabBars.buttons["练唱"].tap()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Vocal UI Test")).firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["第一句"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["听示范"].exists)
+        XCTAssertTrue(app.buttons["开始跟唱"].exists)
+        saveScreenshot(app, name: "逐句练唱")
+        app.buttons["下句"].tap()
+        XCTAssertTrue(app.staticTexts["第二句"].waitForExistence(timeout: 3))
+    }
+
     private func saveScreenshot(_ app: XCUIApplication, name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name

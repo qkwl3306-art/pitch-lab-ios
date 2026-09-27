@@ -12,14 +12,14 @@ enum NoteFeedbackStatus: String, Codable, Equatable {
     case missed
 }
 
-struct NoteFeedback: Equatable {
+struct NoteFeedback: Codable, Equatable {
     let noteIndex: Int
     let targetMIDI: Int
     let status: NoteFeedbackStatus
     let cents: Double?
 }
 
-struct PhraseFeedback: Equatable {
+struct PhraseFeedback: Codable, Equatable {
     let notes: [NoteFeedback]
     var passed: Bool { !notes.isEmpty && notes.allSatisfy { $0.status == .passed } }
 }
