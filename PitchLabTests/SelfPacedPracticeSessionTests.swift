@@ -103,6 +103,18 @@ final class SelfPacedPracticeSessionTests: XCTestCase {
         XCTAssertTrue(session.skippedNoteIndices.isEmpty)
     }
 
+    func testFinalFeedbackShowsMissedOrInaccurateNoteWithoutTreatingSilenceAsMiss() {
+        var session = SelfPacedPracticeSession(noteRange: 0..<2, mode: .wholePhrase)
+        _ = confirm(&session, midi: 60, at: 1.0)
+        _ = session.observe(frequency: nil, targetMIDI: 62, at: 2.0)
+        session.skipCurrent()
+
+        XCTAssertTrue(session.isComplete)
+        XCTAssertEqual(session.passedNoteIndices, [0])
+        XCTAssertEqual(session.skippedNoteIndices, [1])
+        XCTAssertEqual(session.unresolvedNoteIndices, [1])
+    }
+
     @discardableResult
     private func confirm(_ session: inout SelfPacedPracticeSession, midi: Int, at start: TimeInterval) -> SelfPacedPitchUpdate {
         let frequency = NoteMath.frequency(midi: midi)
