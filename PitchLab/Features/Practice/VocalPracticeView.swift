@@ -21,6 +21,7 @@ struct VocalPracticeView: View {
     @State private var phraseText = ""
     @State private var pastedLyrics = ""
     @State private var showRange = false
+    @State private var practiceMode: SelfPacedPracticeMode = .noteByNote
     @State private var rangeLow = UserDefaults.standard.integer(forKey: "vocal-range-low")
     @State private var rangeHigh = UserDefaults.standard.integer(forKey: "vocal-range-high")
     @State private var attempts: [Int: Int] = [:]
@@ -215,14 +216,36 @@ struct VocalPracticeView: View {
                 .font(.caption)
             Text("\(phrase.noteRange.count) 个音 · 已练 \(attempts[selectedPhrase, default: 0]) 次 · \(passed.contains(selectedPhrase) ? "已达标" : "待达标")")
                 .font(.caption).foregroundStyle(.secondary)
-            ScrollView(.horizontal) {
-                HStack(spacing: 6) {
-                    ForEach(phrase.noteRange, id: \.self) { index in
-                        Text(NoteMath.name(midi: melody.notes[index].midi + shift))
-                            .font(.caption.monospacedDigit())
-                            .padding(6)
-                            .background(.mint.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
+            ScrollViewReader { proxy in
+                ScrollView(.horizontal) {
+                    HStack(spacing: 8) {
+                        ForEach(phrase.noteRange, id: \.self) { index in
+                            let isTarget = model.targetNoteIndex == index
+                            let status = model.feedback?.notes.first(where: { $0.noteIndex == index })?.status
+                            VStack(spacing: 4) {
+                                Text(NoteMath.name(midi: melody.notes[index].midi + shift))
+                                    .font(.headline.monospacedDigit())
+                                if status == .passed || model.passedNoteIndices.contains(index) {
+                                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                                } else if model.skippedNoteIndices.contains(index) {
+                                    Text("重练").font(.caption2).foregroundStyle(.orange)
+                                } else if isTarget {
+                                    Text(model.targetCents.map { String(format: "%+.0f¢", $0) } ?? "唱这个音")
+                                        .font(.caption2).foregroundStyle(.orange)
+                                } else { Text(" ").font(.caption2) }
+                            }
+                            .frame(minWidth: 60, minHeight: 60)
+                            .background(isTarget ? Color.yellow.opacity(0.35) : .mint.opacity(0.12),
+                                        in: RoundedRectangle(cornerRadius: 10))
+                            .overlay(RoundedRectangle(cornerRadius: 10).stroke(isTarget ? .orange : .clear, lineWidth: 2))
+                            .id(index)
+                        }
                     }
+                }
+                .accessibilityIdentifier("self-paced-note-strip")
+                .onChange(of: model.targetNoteIndex) { _, index in
+                    guard let index else { return }
+                    withAnimation(.easeOut(duration: 0.2)) { proxy.scrollTo(index, anchor: .center) }
                 }
             }
             ScrollView(.horizontal) {
@@ -262,21 +285,46 @@ struct VocalPracticeView: View {
                 Text("当前音高：\(model.currentName)")
                 Spacer()
                 switch model.phase {
-                case .idle: Text("准备练习")
-                case .countdown(let count): Text("倒数 \(count)")
-                case .recording: Text("跟唱中")
-                case .finished: Text("本轮结束")
+                case .idle: Text("准备好了")
+                case .starting: Text("正在开启麦克风")
+                case .listening: Text("持续识别中")
+                case .finished: Text("本句完成 · 可立即重练")
                 }
             }
             .font(.subheadline)
+            Picker("练习方式", selection: $practiceMode) {
+                ForEach(SelfPacedPracticeMode.allCases) { mode in
+                    Text(mode.title).tag(mode)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityIdentifier("self-paced-mode-picker")
+            if let targetName = model.targetName {
+                HStack(alignment: .firstTextBaseline) {
+                    Text("当前目标音").font(.caption).foregroundStyle(.secondary)
+                    Text(targetName).font(.largeTitle.bold().monospacedDigit()).foregroundStyle(.orange)
+                    Spacer()
+                    if practiceMode == .progressive, let end = model.progressiveEndIndex {
+                        Text("练前缀 · \(end - phrase.noteRange.lowerBound + 1) / \(phrase.noteRange.count) 音")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+                }
+            }
             HStack {
                 Button("听示范", systemImage: "play.fill") {
                     model.preview(score: melody, phrase: phrase, transposition: shift)
                 }
-                Button(attempts[selectedPhrase, default: 0] > 0 ? "重练本句" : "开始跟唱", systemImage: "mic.fill") {
-                    model.begin(score: melody, phrase: phrase, transposition: shift)
+                if model.phase == .idle || model.phase == .finished {
+                    Button("准备好了", systemImage: "mic.fill") {
+                        model.begin(score: melody, phrase: phrase, transposition: shift, mode: practiceMode)
+                    }
+                    .buttonStyle(.borderedProminent)
+                } else {
+                    if practiceMode == .noteByNote {
+                        Button("下一个音") { model.advance() }.buttonStyle(.borderedProminent)
+                    }
+                    Button("跳过") { model.skipCurrent() }.buttonStyle(.bordered)
                 }
-                .buttonStyle(.borderedProminent)
                 Button("停止") { model.stop() }
             }
             .buttonStyle(.bordered)
@@ -286,7 +334,7 @@ struct VocalPracticeView: View {
             } else if case .failed(let message) = model.microphoneStatus {
                 Text("麦克风启动失败：\(message)").foregroundStyle(.red)
             }
-            Text("听示范后，倒数三秒开始跟唱。每个音按时间检查；全部达标才通过本句。")
+            Text("保持开启即可持续识别。音高稳定落在目标 ±50 音分内即算唱准；短暂停顿不会漏判，可反复尝试。")
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(16)
