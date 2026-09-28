@@ -352,6 +352,10 @@ struct VocalPracticeView: View {
                     Spacer()
                     Text(statusText(note.status))
                     if let cents = note.cents { Text(String(format: "%+.0f 音分", cents)) }
+                    if note.status != .passed {
+                        Button("重练") { model.retry(noteIndex: note.noteIndex) }
+                            .font(.caption)
+                    }
                 }
                 .font(.subheadline)
                 .foregroundStyle(note.status == .passed ? .green : .primary)
@@ -366,7 +370,7 @@ struct VocalPracticeView: View {
         case .passed: "唱准"
         case .high: "偏高"
         case .low: "偏低"
-        case .missed: "漏唱"
+        case .missed: "待重练"
         }
     }
 
