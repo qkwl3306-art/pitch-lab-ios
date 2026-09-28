@@ -45,7 +45,7 @@ final class SelfPacedPracticeSessionTests: XCTestCase {
         session.advance()
 
         XCTAssertEqual(session.skippedNoteIndices, [3])
-        XCTAssertEqual(session.unresolvedNoteIndices, [3])
+        XCTAssertEqual(session.unresolvedNoteIndices, [3, 4])
         XCTAssertEqual(session.currentNoteIndex, 4)
     }
 
