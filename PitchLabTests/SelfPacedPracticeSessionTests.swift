@@ -126,6 +126,27 @@ final class SelfPacedPracticeSessionTests: XCTestCase {
         XCTAssertEqual(session.passedNoteIndices, [0, 1])
     }
 
+    func testManualAdvanceAfterCorrectNoteDoesNotMarkThatNoteSkipped() {
+        var session = SelfPacedPracticeSession(noteRange: 0..<2, mode: .noteByNote)
+        _ = confirm(&session, midi: 60, at: 1.0)
+        session.advance()
+
+        XCTAssertEqual(session.passedNoteIndices, [0])
+        XCTAssertTrue(session.skippedNoteIndices.isEmpty)
+        XCTAssertEqual(session.currentNoteIndex, 1)
+    }
+
+    func testRetryFromCompletedPhraseReopensRequestedNote() {
+        var session = SelfPacedPracticeSession(noteRange: 0..<1, mode: .wholePhrase)
+        _ = confirm(&session, midi: 60, at: 1.0)
+        XCTAssertTrue(session.isComplete)
+        session.retry(noteIndex: 0)
+
+        XCTAssertEqual(session.currentNoteIndex, 0)
+        XCTAssertTrue(session.passedNoteIndices.isEmpty)
+        XCTAssertFalse(session.isComplete)
+    }
+
     @discardableResult
     private func confirm(_ session: inout SelfPacedPracticeSession, midi: Int, at start: TimeInterval) -> SelfPacedPitchUpdate {
         let frequency = NoteMath.frequency(midi: midi)
