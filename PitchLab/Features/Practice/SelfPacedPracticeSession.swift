@@ -145,7 +145,7 @@ struct SelfPacedPracticeSession {
             skippedNoteIndices.insert(currentNoteIndex)
             moveToNextAfterManualAdvance(from: currentNoteIndex)
         }
-        if self.currentNoteIndex == nil, mode == .progressive,
+        if currentNoteIndex == nil, mode == .progressive,
            passedNoteIndices.count == noteRange.count {
             passedNoteIndices = []
             progressiveEndIndex = noteRange.isEmpty ? nil : noteRange.lowerBound
