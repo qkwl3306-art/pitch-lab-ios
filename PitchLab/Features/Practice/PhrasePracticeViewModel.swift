@@ -34,6 +34,7 @@ final class PhrasePracticeViewModel: ObservableObject {
     private var transposition = 0
     private var session: SelfPacedPracticeSession?
     private var lastRawFrequency: Double?
+    private var practiceStartTime: TimeInterval = 0
 
     var currentName: String {
         currentHz.flatMap(NoteMath.nearestMIDINote(frequency:)).map(NoteMath.name(midi:)) ?? "—"
@@ -71,6 +72,7 @@ final class PhrasePracticeViewModel: ObservableObject {
         feedback = nil
         targetCents = nil
         lastRawFrequency = nil
+        practiceStartTime = ProcessInfo.processInfo.systemUptime
         resetReadings()
         phase = .starting
         microphone.start(mode: .default)
@@ -163,9 +165,10 @@ final class PhrasePracticeViewModel: ObservableObject {
                 currentHz = frequency
                 if let phrase {
                     if readings.count == 256 { readings.removeFirst() }
-                    if hasPitchBreak { readings.append(TimedPitchReading(time: phrase.start + now, frequency: nil)) }
+                    let relativeTime = phrase.start + max(0, now - practiceStartTime)
+                    if hasPitchBreak { readings.append(TimedPitchReading(time: relativeTime, frequency: nil)) }
                     if readings.count == 256 { readings.removeFirst() }
-                    readings.append(TimedPitchReading(time: phrase.start + now, frequency: frequency))
+                    readings.append(TimedPitchReading(time: relativeTime, frequency: frequency))
                 }
             }
             defer { lastRawFrequency = frequency }
