@@ -104,7 +104,9 @@ struct SelfPacedPracticeSession {
         var didExpandStage = false
         switch mode {
         case .noteByNote:
-            break
+            if currentNoteIndex + 1 == noteRange.upperBound {
+                self.currentNoteIndex = nil
+            }
         case .progressive:
             if currentNoteIndex < (progressiveEndIndex ?? currentNoteIndex) {
                 moveTarget(to: currentNoteIndex + 1)
