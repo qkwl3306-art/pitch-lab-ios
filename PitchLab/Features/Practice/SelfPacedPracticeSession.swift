@@ -138,12 +138,12 @@ struct SelfPacedPracticeSession {
     }
 
     mutating func advance() {
-        guard let currentNoteIndex else { return }
-        if passedNoteIndices.contains(currentNoteIndex) {
-            moveToNextAfterManualAdvance(from: currentNoteIndex)
+        guard let index = currentNoteIndex else { return }
+        if passedNoteIndices.contains(index) {
+            moveToNextAfterManualAdvance(from: index)
         } else {
-            skippedNoteIndices.insert(currentNoteIndex)
-            moveToNextAfterManualAdvance(from: currentNoteIndex)
+            skippedNoteIndices.insert(index)
+            moveToNextAfterManualAdvance(from: index)
         }
         if currentNoteIndex == nil, mode == .progressive,
            passedNoteIndices.count == noteRange.count {
