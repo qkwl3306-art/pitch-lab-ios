@@ -56,4 +56,36 @@ final class PitchLabUITests: XCTestCase {
         attachment.lifetime = .keepAlways
         add(attachment)
     }
+
+    func testContinuousPracticeModeRetryAndPhraseContext() {
+        let app = XCUIApplication()
+        app.launchArguments += ["--ui-test-vocal-score", "--ui-test-practice-capture"]
+        app.launch()
+        app.tabBars.buttons["练唱"].tap()
+        app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Vocal UI Test")).firstMatch.tap()
+        app.buttons["准备好了"].tap()
+        XCTAssertTrue(app.staticTexts["持续识别中"].waitForExistence(timeout: 3))
+        XCTAssertEqual(app.staticTexts["practice-target-note"].label, "C4")
+        app.segmentedControls["self-paced-mode-picker"].buttons["整句跟唱"].tap()
+        XCTAssertFalse(app.buttons["下一个音"].exists)
+        app.buttons["跳过"].tap()
+        XCTAssertEqual(app.staticTexts["practice-target-note"].label, "D4")
+        app.buttons["跳过"].tap()
+        XCTAssertTrue(app.buttons["准备好了"].exists)
+        app.buttons["准备好了"].tap()
+        XCTAssertEqual(app.staticTexts["practice-target-note"].label, "C4")
+        app.buttons["跳过"].tap()
+        app.buttons["跳过"].tap()
+        app.buttons["停止"].tap()
+        XCTAssertFalse(app.staticTexts["practice-target-note"].exists)
+        app.buttons["重练"].firstMatch.tap()
+        XCTAssertEqual(app.staticTexts["practice-target-note"].label, "C4")
+        saveScreenshot(app, name: "持续补练")
+        app.buttons["下句"].tap()
+        XCTAssertFalse(app.staticTexts["practice-target-note"].exists)
+        app.buttons["准备好了"].tap()
+        XCTAssertEqual(app.staticTexts["practice-target-note"].label, "E4")
+        app.buttons["停止"].tap()
+    }
+
 }

@@ -305,6 +305,7 @@ struct VocalPracticeView: View {
                 HStack(alignment: .firstTextBaseline) {
                     Text("当前目标音").font(.caption).foregroundStyle(.secondary)
                     Text(targetName).font(.largeTitle.bold().monospacedDigit()).foregroundStyle(.orange)
+                        .accessibilityIdentifier("practice-target-note")
                     Spacer()
                     if practiceMode == .progressive, let end = model.progressiveEndIndex {
                         Text("练前缀 · \(end - phrase.noteRange.lowerBound + 1) / \(phrase.noteRange.count) 音")

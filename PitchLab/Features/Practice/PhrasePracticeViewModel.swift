@@ -53,7 +53,7 @@ final class PhrasePracticeViewModel: ObservableObject {
 
     init(microphone: (any PracticePitchCapture)? = nil,
          now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
-        self.microphone = microphone ?? MicrophonePitchService()
+        self.microphone = microphone ?? Self.makeCapture()
         self.now = now
         self.microphone.statusPublisher.sink { [weak self] status in
             guard let self else { return }
@@ -210,7 +210,9 @@ final class PhrasePracticeViewModel: ObservableObject {
             let midi = score.notes[index].midi + transposition
             let update = session.observe(frequency: frequency, targetMIDI: midi, at: now)
             self.session = session
-            if let cents = update.cents { noteCents[index] = cents }
+            if let cents = update.cents, update.didPass || !session.passedNoteIndices.contains(index) {
+                noteCents[index] = cents
+            }
             let hasPitchBreak = frequency == nil || frequency.map { !isContinuousPitch($0, previous: lastRawFrequency) } == true
             pendingTraceBreak = pendingTraceBreak || hasPitchBreak
             if displayLimiter.shouldPublish(at: now) {
@@ -290,5 +292,14 @@ final class PhrasePracticeViewModel: ObservableObject {
                                      onset: max(0, note.onset - phrase.start), duration: note.duration)
         }
         return ToneSequenceRenderer.transposed(events, by: transposition)
+    }
+
+    private static func makeCapture() -> any PracticePitchCapture {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-test-practice-capture") {
+            return UITestPracticeCapture()
+        }
+        #endif
+        return MicrophonePitchService()
     }
 }
