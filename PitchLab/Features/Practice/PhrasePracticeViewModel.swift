@@ -23,7 +23,8 @@ final class PhrasePracticeViewModel: ObservableObject {
     @Published private(set) var skippedNoteIndices: Set<Int> = []
     @Published private(set) var progressiveEndIndex: Int?
 
-    private let microphone = MicrophonePitchService()
+    private let microphone: any PracticePitchCapture
+    private let now: () -> TimeInterval
     private let player = TonePlayer()
     private var displayLimiter = PitchDisplayLimiter()
     private var subscriptions = Set<AnyCancellable>()
@@ -48,13 +49,16 @@ final class PhrasePracticeViewModel: ObservableObject {
     var unresolvedNoteIndices: Set<Int> { session?.unresolvedNoteIndices ?? [] }
     var isComplete: Bool { session?.isComplete ?? false }
 
-    init() {
-        microphone.$status.sink { [weak self] status in
+    init(microphone: (any PracticePitchCapture)? = nil,
+         now: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime }) {
+        self.microphone = microphone ?? MicrophonePitchService()
+        self.now = now
+        self.microphone.statusPublisher.sink { [weak self] status in
             guard let self else { return }
             self.microphoneStatus = status
             if status == .listening, self.phase == .starting { self.phase = .listening }
         }.store(in: &subscriptions)
-        microphone.$pitchHz.sink { [weak self] hz in self?.receivePitch(hz) }.store(in: &subscriptions)
+        self.microphone.pitchPublisher.sink { [weak self] hz in self?.receivePitch(hz) }.store(in: &subscriptions)
     }
 
     func begin(score: VocalScore, phrase: VocalPhrase, transposition: Int,
@@ -72,7 +76,7 @@ final class PhrasePracticeViewModel: ObservableObject {
         feedback = nil
         targetCents = nil
         lastRawFrequency = nil
-        practiceStartTime = ProcessInfo.processInfo.systemUptime
+        practiceStartTime = now()
         resetReadings()
         phase = .starting
         microphone.start(mode: .default)
@@ -153,7 +157,7 @@ final class PhrasePracticeViewModel: ObservableObject {
     }
 
     private func receivePitch(_ frequency: Double?) {
-        let now = ProcessInfo.processInfo.systemUptime
+        let now = now()
         if phase == .listening, let index = targetNoteIndex,
            let score, score.notes.indices.contains(index), var session {
             let midi = score.notes[index].midi + transposition
