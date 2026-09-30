@@ -38,6 +38,7 @@ struct SelfPacedPracticeSession {
     private var lastPassedTargetMIDI: Int?
     private var observedPitchBreakSinceLastPass = true
     private var isRetrying = false
+    private var attemptedRetryIndices: Set<Int> = []
 
     private let accuracyToleranceCents = 50.0
     private let stablePitchDuration = 0.25
@@ -106,7 +107,8 @@ struct SelfPacedPracticeSession {
         self.stablePitchSince = nil
 
         if isRetrying {
-            let next = noteRange.first { !passedNoteIndices.contains($0) }
+            attemptedRetryIndices.insert(currentNoteIndex)
+            let next = nextRetryIndex
             if mode != .noteByNote || next == nil { moveTarget(to: next) }
             return SelfPacedPitchUpdate(cents: cents, didPass: true,
                                         didExpandStage: false, didCompletePhrase: isComplete)
@@ -174,6 +176,7 @@ struct SelfPacedPracticeSession {
     mutating func retry(noteIndex: Int) {
         guard noteRange.contains(noteIndex) else { return }
         isRetrying = true
+        attemptedRetryIndices = []
         passedNoteIndices.remove(noteIndex)
         skippedNoteIndices.remove(noteIndex)
         lastPassedTargetMIDI = nil
@@ -186,6 +189,7 @@ struct SelfPacedPracticeSession {
 
     mutating func restart() {
         isRetrying = false
+        attemptedRetryIndices = []
         passedNoteIndices = []
         skippedNoteIndices = []
         progressiveEndIndex = mode == .progressive && !noteRange.isEmpty ? noteRange.lowerBound : nil
@@ -201,7 +205,8 @@ struct SelfPacedPracticeSession {
     private mutating func moveToNextAfterManualAdvance(from index: Int) {
         stablePitchSince = nil
         if isRetrying {
-            moveTarget(to: noteRange.first { $0 != index && !passedNoteIndices.contains($0) })
+            attemptedRetryIndices.insert(index)
+            moveTarget(to: nextRetryIndex)
             observedPitchBreakSinceLastPass = true
             return
         }
@@ -226,5 +231,9 @@ struct SelfPacedPracticeSession {
         stablePitchSince = nil
         lastObservationAt = nil
         currentNotePassed = index.map(passedNoteIndices.contains) ?? false
+    }
+
+    private var nextRetryIndex: Int? {
+        noteRange.first { !passedNoteIndices.contains($0) && !attemptedRetryIndices.contains($0) }
     }
 }

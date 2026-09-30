@@ -204,7 +204,7 @@ final class PhrasePracticeViewModel: ObservableObject {
     }
 
     private func receivePitch(_ frequency: Double?) {
-        let now = now()
+        let now = self.now()
         if phase == .listening, let index = targetNoteIndex,
            let score, score.notes.indices.contains(index), var session {
             let midi = score.notes[index].midi + transposition
@@ -219,9 +219,10 @@ final class PhrasePracticeViewModel: ObservableObject {
                 currentHz = frequency
                 targetCents = update.cents
                 let relativeTime = max(0, now - practiceStartTime)
-                readings.removeAll { $0.time < relativeTime - RollingPitchTrace.duration }
-                if pendingTraceBreak { readings.append(TimedPitchReading(time: relativeTime, frequency: nil)) }
-                readings.append(TimedPitchReading(time: relativeTime, frequency: frequency))
+                var recent = readings.filter { $0.time >= relativeTime - RollingPitchTrace.duration }
+                if pendingTraceBreak { recent.append(TimedPitchReading(time: relativeTime, frequency: nil)) }
+                recent.append(TimedPitchReading(time: relativeTime, frequency: frequency))
+                readings = recent
                 pendingTraceBreak = false
             }
             defer { lastRawFrequency = frequency }
