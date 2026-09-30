@@ -36,6 +36,8 @@ final class PhrasePracticeViewModel: ObservableObject {
     private var session: SelfPacedPracticeSession?
     private var lastRawFrequency: Double?
     private var practiceStartTime: TimeInterval = 0
+    private var noteCents: [Int: Double] = [:]
+    private var pendingTraceBreak = false
 
     var currentName: String {
         currentHz.flatMap(NoteMath.nearestMIDINote(frequency:)).map(NoteMath.name(midi:)) ?? "—"
@@ -63,7 +65,7 @@ final class PhrasePracticeViewModel: ObservableObject {
 
     func begin(score: VocalScore, phrase: VocalPhrase, transposition: Int,
                mode: SelfPacedPracticeMode) {
-        stop()
+        cancelPreview()
         self.score = score
         self.phrase = phrase
         self.transposition = transposition
@@ -76,11 +78,10 @@ final class PhrasePracticeViewModel: ObservableObject {
         feedback = nil
         targetCents = nil
         lastRawFrequency = nil
+        noteCents = [:]
         practiceStartTime = now()
         resetReadings()
-        phase = .starting
-        microphone.start(mode: .default)
-        if microphone.status == .listening { phase = .listening }
+        ensureCapture()
     }
 
     func advance() {
@@ -99,14 +100,37 @@ final class PhrasePracticeViewModel: ObservableObject {
     }
 
     func retry(noteIndex: Int) {
-        guard var session else { return }
+        guard var session, session.noteRange.contains(noteIndex) else { return }
         session.retry(noteIndex: noteIndex)
         self.session = session
         feedback = nil
         targetCents = nil
-        phase = microphone.status == .listening ? .listening : .starting
-        if microphone.status != .listening { microphone.start(mode: .default) }
+        noteCents[noteIndex] = nil
+        lastRawFrequency = nil
+        ensureCapture()
         refreshSessionState()
+    }
+
+    func retry(noteIndex: Int, score: VocalScore, phrase: VocalPhrase,
+               transposition: Int, mode: SelfPacedPracticeMode, previousFeedback: PhraseFeedback?) {
+        guard phrase.noteRange.contains(noteIndex), score.notes.indices.contains(noteIndex) else { return }
+        if self.score != score || self.phrase != phrase || self.transposition != transposition || self.mode != mode || session == nil {
+            begin(score: score, phrase: phrase, transposition: transposition, mode: mode)
+            let matching = previousFeedback?.notes.filter {
+                phrase.noteRange.contains($0.noteIndex) && score.notes.indices.contains($0.noteIndex)
+                    && $0.targetMIDI == score.notes[$0.noteIndex].midi + transposition
+            } ?? []
+            session = SelfPacedPracticeSession(noteRange: phrase.noteRange, mode: mode,
+                passed: Set(matching.filter { $0.status == .passed }.map(\.noteIndex)),
+                skipped: Set(matching.filter { $0.status != .passed }.map(\.noteIndex)))
+            for note in matching { noteCents[note.noteIndex] = note.cents }
+        }
+        retry(noteIndex: noteIndex)
+    }
+
+    func changeMode(_ mode: SelfPacedPracticeMode) {
+        guard self.mode != mode, phase != .idle, let score, let phrase else { return }
+        begin(score: score, phrase: phrase, transposition: transposition, mode: mode)
     }
 
     func restart() {
@@ -116,10 +140,11 @@ final class PhrasePracticeViewModel: ObservableObject {
         skippedNoteIndices = []
         feedback = nil
         targetCents = nil
-        readings = []
+        resetReadings()
+        practiceStartTime = now()
+        noteCents = [:]
         lastRawFrequency = nil
-        phase = microphone.status == .listening ? .listening : .starting
-        if microphone.status != .listening { microphone.start(mode: .default) }
+        ensureCapture()
         refreshSessionState()
     }
 
@@ -146,14 +171,36 @@ final class PhrasePracticeViewModel: ObservableObject {
     }
 
     func stop() {
+        phase = .idle
+        cancelPreview()
+        microphone.stop()
+        session = nil
+        score = nil
+        phrase = nil
+        feedback = nil
+        targetNoteIndex = nil
+        progressiveEndIndex = nil
+        passedNoteIndices = []
+        skippedNoteIndices = []
+        targetCents = nil
+        lastRawFrequency = nil
+        noteCents = [:]
+        resetReadings()
+    }
+
+    private func cancelPreview() {
         previewTask?.cancel()
         previewTask = nil
         phraseRenderTask?.cancel()
         phraseRenderTask = nil
-        phase = .idle
-        feedback = nil
-        microphone.stop()
         player.stopAll()
+    }
+
+    private func ensureCapture() {
+        phase = microphone.status == .listening ? .listening : .starting
+        if microphone.status != .listening && microphone.status != .requestingPermission {
+            microphone.start(mode: .default)
+        }
     }
 
     private func receivePitch(_ frequency: Double?) {
@@ -163,21 +210,20 @@ final class PhrasePracticeViewModel: ObservableObject {
             let midi = score.notes[index].midi + transposition
             let update = session.observe(frequency: frequency, targetMIDI: midi, at: now)
             self.session = session
-            targetCents = update.cents
+            if let cents = update.cents { noteCents[index] = cents }
             let hasPitchBreak = frequency == nil || frequency.map { !isContinuousPitch($0, previous: lastRawFrequency) } == true
+            pendingTraceBreak = pendingTraceBreak || hasPitchBreak
             if displayLimiter.shouldPublish(at: now) {
                 currentHz = frequency
-                if let phrase {
-                    if readings.count == 256 { readings.removeFirst() }
-                    let relativeTime = phrase.start + max(0, now - practiceStartTime)
-                    if hasPitchBreak { readings.append(TimedPitchReading(time: relativeTime, frequency: nil)) }
-                    if readings.count == 256 { readings.removeFirst() }
-                    readings.append(TimedPitchReading(time: relativeTime, frequency: frequency))
-                }
+                targetCents = update.cents
+                let relativeTime = max(0, now - practiceStartTime)
+                readings.removeAll { $0.time < relativeTime - RollingPitchTrace.duration }
+                if pendingTraceBreak { readings.append(TimedPitchReading(time: relativeTime, frequency: nil)) }
+                readings.append(TimedPitchReading(time: relativeTime, frequency: frequency))
+                pendingTraceBreak = false
             }
             defer { lastRawFrequency = frequency }
             if update.didPass { handlePassedNote(index) }
-            if update.didCompletePhrase { finishSession() }
             return
         }
         guard displayLimiter.shouldPublish(at: now) else { return }
@@ -194,8 +240,7 @@ final class PhrasePracticeViewModel: ObservableObject {
         skippedNoteIndices = session?.skippedNoteIndices ?? skippedNoteIndices
         progressiveEndIndex = session?.progressiveEndIndex
         targetNoteIndex = session?.currentNoteIndex
-        if mode == .noteByNote || mode == .progressive { targetCents = 0 }
-        _ = index
+        targetCents = targetNoteIndex == index ? 0 : nil
         if session?.isComplete == true { finishSession() }
     }
 
@@ -214,29 +259,26 @@ final class PhrasePracticeViewModel: ObservableObject {
         phase = .finished
         passedNoteIndices = session?.passedNoteIndices ?? passedNoteIndices
         skippedNoteIndices = session?.skippedNoteIndices ?? skippedNoteIndices
-        let activeIndex = targetNoteIndex
-        let activeCents = targetCents
         targetNoteIndex = nil
+        targetCents = nil
         let notes = phrase.noteRange.map { index -> NoteFeedback in
             let target = score.notes[index].midi + transposition
             let status: NoteFeedbackStatus
             if passedNoteIndices.contains(index) { status = .passed }
-            else if skippedNoteIndices.contains(index) { status = .low }
-            else if let cents = activeCents, index == activeIndex {
+            else if let cents = noteCents[index], abs(cents) > 50 {
                 status = cents > 0 ? .high : .low
             } else { status = .missed }
             return NoteFeedback(noteIndex: index, targetMIDI: target, status: status,
-                               cents: index == activeIndex ? activeCents : nil)
+                               cents: noteCents[index])
         }
         feedback = PhraseFeedback(notes: notes)
         // Keep the capture engine active so an unresolved note can be retried immediately.
-        microphone.start(mode: .default)
-        if microphone.status == .listening { phase = .finished }
     }
 
     private func resetReadings() {
         readings = []
         displayLimiter.reset()
+        pendingTraceBreak = false
         currentHz = nil
     }
 

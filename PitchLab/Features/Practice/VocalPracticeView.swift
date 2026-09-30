@@ -44,12 +44,13 @@ struct VocalPracticeView: View {
             if let melody, let phrase {
                 phraseControls(melody: melody, phrase: phrase)
                 PitchLane(score: melody, phrase: phrase, shift: shift, readings: model.readings,
+                          targetNoteIndex: model.targetNoteIndex,
                           feedback: model.feedback ?? lastFeedback[selectedPhrase])
                     .frame(height: 170)
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
                 practiceControls(melody: melody, phrase: phrase)
-                if let feedback = model.feedback ?? lastFeedback[selectedPhrase] { results(feedback) }
+                if let feedback = model.feedback ?? (model.phase == .idle ? lastFeedback[selectedPhrase] : nil) { results(feedback) }
             } else {
                 ContentUnavailableView("没有可练习的旋律", systemImage: "music.note")
             }
@@ -122,6 +123,7 @@ struct VocalPracticeView: View {
             saveProgress()
         }
         .onAppear { loadProgress() }
+        .onChange(of: practiceMode) { _, mode in model.changeMode(mode) }
         .onDisappear { model.stop() }
     }
 
@@ -157,7 +159,7 @@ struct VocalPracticeView: View {
             HStack {
                 Text("适合我的调").font(.headline)
                 Spacer()
-                Button(range == nil ? "测量音域" : "重测音域") { showRange = true }
+                Button(range == nil ? "测量音域" : "重测音域") { model.stop(); showRange = true }
             }
             if let range {
                 Text("舒适音域 \(NoteMath.name(midi: range.low))～\(NoteMath.name(midi: range.high))")
@@ -316,7 +318,11 @@ struct VocalPracticeView: View {
                 }
                 if model.phase == .idle || model.phase == .finished {
                     Button("准备好了", systemImage: "mic.fill") {
-                        model.begin(score: melody, phrase: phrase, transposition: shift, mode: practiceMode)
+                        if model.phase == .finished {
+                            model.restart()
+                        } else {
+                            model.begin(score: melody, phrase: phrase, transposition: shift, mode: practiceMode)
+                        }
                     }
                     .buttonStyle(.borderedProminent)
                 } else {
@@ -353,7 +359,11 @@ struct VocalPracticeView: View {
                     Text(statusText(note.status))
                     if let cents = note.cents { Text(String(format: "%+.0f 音分", cents)) }
                     if note.status != .passed {
-                        Button("重练") { model.retry(noteIndex: note.noteIndex) }
+                        Button("重练") {
+                            guard let melody, let phrase else { return }
+                            model.retry(noteIndex: note.noteIndex, score: melody, phrase: phrase,
+                                        transposition: shift, mode: practiceMode, previousFeedback: feedback)
+                        }
                             .font(.caption)
                     }
                 }
@@ -421,6 +431,7 @@ private struct PitchLane: View {
     let phrase: VocalPhrase
     let shift: Int
     let readings: [TimedPitchReading]
+    let targetNoteIndex: Int?
     let feedback: PhraseFeedback?
 
     var body: some View {
@@ -432,6 +443,7 @@ private struct PitchLane: View {
             let timeSpan = max(0.1, phrase.end - phrase.start)
             func x(_ time: Double) -> CGFloat { CGFloat((time - phrase.start) / timeSpan) * size.width }
             func y(_ midi: Double) -> CGFloat { size.height * (1 - CGFloat((midi - low) / span)) }
+            let trace = RollingPitchTrace(latestTime: readings.last?.time ?? 0)
             for midi in (minimum + shift - 2)...(maximum + shift + 2) {
                 let row = y(Double(midi))
                 var line = Path()
@@ -439,27 +451,42 @@ private struct PitchLane: View {
                 line.addLine(to: CGPoint(x: size.width, y: row))
                 context.stroke(line, with: .color(.gray.opacity(0.2)), lineWidth: 1)
             }
-            for (offset, note) in notes.enumerated() {
+            if let targetNoteIndex, score.notes.indices.contains(targetNoteIndex) {
+                let targetY = y(Double(score.notes[targetNoteIndex].midi + shift))
+                let band = CGRect(x: 0, y: targetY - size.height / CGFloat(span) / 2,
+                                  width: size.width, height: size.height / CGFloat(span))
+                context.fill(Path(band), with: .color(.green.opacity(0.12)))
+                var guide = Path()
+                guide.move(to: CGPoint(x: 0, y: targetY))
+                guide.addLine(to: CGPoint(x: size.width, y: targetY))
+                context.stroke(guide, with: .color(.mint), lineWidth: 2)
+            } else if readings.isEmpty {
+              for (offset, note) in notes.enumerated() {
                 let status = feedback?.notes.first { $0.noteIndex == phrase.noteRange.lowerBound + offset }?.status
                 let color: Color = status == .passed ? .green : status == nil ? .mint : .orange
                 let rect = CGRect(x: x(note.onset), y: y(Double(note.midi + shift)) - 5,
                                   width: max(3, x(note.onset + note.duration) - x(note.onset)), height: 10)
                 context.fill(Path(roundedRect: rect, cornerRadius: 5), with: .color(color))
+              }
             }
             var sung = Path()
             var drawing = false
             for sample in readings {
-                guard let hz = sample.frequency, let midi = NoteMath.nearestMIDINote(frequency: hz) else {
+                guard let fraction = trace.position(at: sample.time), let hz = sample.frequency,
+                      let midi = RollingPitchTrace.midi(frequency: hz) else {
                     drawing = false
                     continue
                 }
-                let point = CGPoint(x: x(sample.time), y: y(Double(midi)))
+                let point = CGPoint(x: CGFloat(fraction) * size.width, y: y(midi))
                 if drawing { sung.addLine(to: point) } else { sung.move(to: point) }
                 drawing = true
             }
             context.stroke(sung, with: .color(.orange), style: StrokeStyle(lineWidth: 2, lineCap: .round))
         }
         .accessibilityLabel("旋律与跟唱音高曲线")
+        .overlay(alignment: .topLeading) {
+            if !readings.isEmpty { Text("最近 8 秒").font(.caption2).foregroundStyle(.secondary) }
+        }
     }
 }
 

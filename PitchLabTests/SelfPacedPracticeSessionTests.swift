@@ -160,7 +160,6 @@ final class SelfPacedPracticeSessionTests: XCTestCase {
         XCTAssertTrue(session.passedNoteIndices.isEmpty)
     }
 
-    @discardableResult
     func testRetryCompletesWithoutGettingStuckOnPreviouslyPassedNotes() {
         for mode in [SelfPacedPracticeMode.wholePhrase, .noteByNote] {
             var session = SelfPacedPracticeSession(noteRange: 0..<3, mode: mode)

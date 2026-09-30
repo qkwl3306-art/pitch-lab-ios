@@ -80,6 +80,75 @@ final class PhrasePracticeViewModelTests: XCTestCase {
     }
 
     private var score: VocalScore {
+        testScore
+    }
+
+    @MainActor
+    func testHistoryRetryInitializesDisplayedPhraseAndPreservesPassedNotes() {
+        let capture = TestPitchCapture()
+        var time = 100.0
+        let model = PhrasePracticeViewModel(microphone: capture, now: { time })
+        let history = PhraseFeedback(notes: [
+            NoteFeedback(noteIndex: 0, targetMIDI: 60, status: .missed, cents: nil),
+            NoteFeedback(noteIndex: 1, targetMIDI: 62, status: .passed, cents: 0)
+        ])
+        model.retry(noteIndex: 0, score: score, phrase: phrase, transposition: 0,
+                    mode: .wholePhrase, previousFeedback: history)
+        XCTAssertEqual(model.targetName, "C4")
+        capture.pitch.send(NoteMath.frequency(midi: 60))
+        time += 0.3
+        capture.pitch.send(NoteMath.frequency(midi: 60))
+        XCTAssertTrue(model.feedback?.passed == true)
+        XCTAssertEqual(capture.startCount, 1)
+        model.stop()
+        let nextPhrase = VocalPhrase(id: 1, noteRange: 1..<2, start: 1, end: 2, text: "Next")
+        model.retry(noteIndex: 1, score: score, phrase: nextPhrase, transposition: -2,
+                    mode: .noteByNote, previousFeedback: history)
+        XCTAssertEqual(model.targetName, "C4")
+        XCTAssertEqual(model.targetNoteIndex, 1)
+        XCTAssertTrue(model.passedNoteIndices.isEmpty)
+        model.stop()
+    }
+
+    @MainActor
+    func testLiveModeChangeResetsSessionWithoutRestartingCapture() {
+        let capture = TestPitchCapture()
+        var time = 100.0
+        let model = PhrasePracticeViewModel(microphone: capture, now: { time })
+        model.begin(score: score, phrase: phrase, transposition: 0, mode: .noteByNote)
+        model.changeMode(.wholePhrase)
+        capture.pitch.send(NoteMath.frequency(midi: 60))
+        time += 0.3
+        capture.pitch.send(NoteMath.frequency(midi: 60))
+        XCTAssertEqual(model.targetNoteIndex, 1)
+        model.changeMode(.progressive)
+        XCTAssertEqual(model.targetNoteIndex, 0)
+        XCTAssertEqual(model.progressiveEndIndex, 0)
+        XCTAssertTrue(model.passedNoteIndices.isEmpty)
+        XCTAssertEqual(capture.startCount, 1)
+        XCTAssertEqual(capture.stopCount, 0)
+        model.stop()
+    }
+
+    @MainActor
+    func testSkippedPitchFeedbackKeepsMeasuredDirectionAcrossSilence() {
+        let capture = TestPitchCapture()
+        var time = 100.0
+        let model = PhrasePracticeViewModel(microphone: capture, now: { time })
+        model.begin(score: score, phrase: phrase, transposition: 0, mode: .wholePhrase)
+        capture.pitch.send(NoteMath.frequency(midi: 61))
+        time += 0.2
+        capture.pitch.send(nil)
+        model.skipCurrent()
+        capture.pitch.send(NoteMath.frequency(midi: 61))
+        model.skipCurrent()
+        XCTAssertEqual(model.feedback?.notes.map(\.status), [.high, .low])
+        XCTAssertEqual(model.feedback?.notes[0].cents ?? 0, 100, accuracy: 0.001)
+        XCTAssertEqual(model.feedback?.notes[1].cents ?? 0, -100, accuracy: 0.001)
+        model.stop()
+    }
+
+    private var testScore: VocalScore {
         VocalScore(notes: [60, 62].enumerated().map {
             VocalNote(onset: Double($0.offset), duration: 1, midi: $0.element, lyric: nil)
         }, title: "Test")

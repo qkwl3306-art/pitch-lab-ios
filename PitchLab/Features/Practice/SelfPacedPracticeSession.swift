@@ -37,13 +37,17 @@ struct SelfPacedPracticeSession {
     private var currentNotePassed = false
     private var lastPassedTargetMIDI: Int?
     private var observedPitchBreakSinceLastPass = true
+    private var isRetrying = false
 
     private let accuracyToleranceCents = 50.0
     private let stablePitchDuration = 0.25
 
-    init(noteRange: Range<Int>, mode: SelfPacedPracticeMode) {
+    init(noteRange: Range<Int>, mode: SelfPacedPracticeMode,
+         passed: Set<Int> = [], skipped: Set<Int> = []) {
         self.noteRange = noteRange
         self.mode = mode
+        passedNoteIndices = passed.intersection(Set(noteRange))
+        skippedNoteIndices = skipped.intersection(Set(noteRange)).subtracting(passedNoteIndices)
         currentNoteIndex = noteRange.isEmpty ? nil : noteRange.lowerBound
         progressiveEndIndex = mode == .progressive && !noteRange.isEmpty ? noteRange.lowerBound : nil
     }
@@ -100,6 +104,13 @@ struct SelfPacedPracticeSession {
         lastPassedTargetMIDI = targetMIDI
         observedPitchBreakSinceLastPass = false
         self.stablePitchSince = nil
+
+        if isRetrying {
+            let next = noteRange.first { !passedNoteIndices.contains($0) }
+            if mode != .noteByNote || next == nil { moveTarget(to: next) }
+            return SelfPacedPitchUpdate(cents: cents, didPass: true,
+                                        didExpandStage: false, didCompletePhrase: isComplete)
+        }
 
         var didExpandStage = false
         switch mode {
@@ -162,6 +173,7 @@ struct SelfPacedPracticeSession {
 
     mutating func retry(noteIndex: Int) {
         guard noteRange.contains(noteIndex) else { return }
+        isRetrying = true
         passedNoteIndices.remove(noteIndex)
         skippedNoteIndices.remove(noteIndex)
         lastPassedTargetMIDI = nil
@@ -173,6 +185,7 @@ struct SelfPacedPracticeSession {
     }
 
     mutating func restart() {
+        isRetrying = false
         passedNoteIndices = []
         skippedNoteIndices = []
         progressiveEndIndex = mode == .progressive && !noteRange.isEmpty ? noteRange.lowerBound : nil
@@ -187,6 +200,11 @@ struct SelfPacedPracticeSession {
 
     private mutating func moveToNextAfterManualAdvance(from index: Int) {
         stablePitchSince = nil
+        if isRetrying {
+            moveTarget(to: noteRange.first { $0 != index && !passedNoteIndices.contains($0) })
+            observedPitchBreakSinceLastPass = true
+            return
+        }
         if mode == .progressive {
             guard let progressiveEndIndex else {
                 moveTarget(to: nil)
