@@ -161,6 +161,34 @@ final class SelfPacedPracticeSessionTests: XCTestCase {
     }
 
     @discardableResult
+    func testRetryCompletesWithoutGettingStuckOnPreviouslyPassedNotes() {
+        for mode in [SelfPacedPracticeMode.wholePhrase, .noteByNote] {
+            var session = SelfPacedPracticeSession(noteRange: 0..<3, mode: mode)
+            session.skipCurrent()
+            _ = confirm(&session, midi: 62, at: 1)
+            if mode == .noteByNote { session.advance() }
+            _ = confirm(&session, midi: 64, at: 2)
+            session.retry(noteIndex: 0)
+            _ = confirm(&session, midi: 60, at: 3)
+            XCTAssertTrue(session.isComplete, "mode: \(mode)")
+            XCTAssertEqual(session.passedNoteIndices, [0, 1, 2])
+        }
+    }
+
+    func testRetryAdvancesToRemainingUnresolvedNote() {
+        var session = SelfPacedPracticeSession(noteRange: 0..<4, mode: .wholePhrase)
+        session.skipCurrent()
+        _ = confirm(&session, midi: 62, at: 1)
+        session.skipCurrent()
+        _ = confirm(&session, midi: 65, at: 2)
+        session.retry(noteIndex: 0)
+        _ = confirm(&session, midi: 60, at: 3)
+        XCTAssertEqual(session.currentNoteIndex, 2)
+        _ = confirm(&session, midi: 64, at: 4)
+        XCTAssertTrue(session.isComplete)
+    }
+
+    @discardableResult
     private func confirm(_ session: inout SelfPacedPracticeSession, midi: Int, at start: TimeInterval) -> SelfPacedPitchUpdate {
         let frequency = NoteMath.frequency(midi: midi)
         _ = session.observe(frequency: frequency, targetMIDI: midi, at: start)
