@@ -1,0 +1,54 @@
+name: App Store archive preflight
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive:
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Xcode 26 or later
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import glob, os, re, subprocess
+          choices = []
+          for app in glob.glob('/Applications/Xcode*.app'):
+              developer = app + '/Contents/Developer'
+              result = subprocess.run(['xcodebuild', '-version'], env={**os.environ, 'DEVELOPER_DIR': developer}, capture_output=True, text=True)
+              match = re.search(r'^Xcode (\d+(?:\.\d+)*)', result.stdout, re.M)
+              if match and result.returncode == 0:
+                  version = tuple(map(int, match[1].split('.')))
+                  if version[0] >= 26:
+                      choices.append((version, developer))
+          if not choices:
+              raise SystemExit('No Xcode 26 or later installed')
+          with open(os.environ['GITHUB_ENV'], 'a') as env:
+              print('DEVELOPER_DIR=' + max(choices)[1], file=env)
+          PY
+      - name: Verify device SDK
+        run: |
+          xcodebuild -version
+          sdk=$(xcrun --sdk iphoneos --show-sdk-version)
+          test "${sdk%%.*}" -ge 26
+      - name: Generate Xcode project
+        timeout-minutes: 5
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: "1"
+        run: |
+          brew install xcodegen
+          xcodegen generate
+      - name: Archive without signing for preflight
+        run: |
+          xcodebuild archive -project PitchLab.xcodeproj -scheme PitchLab -configuration Release -destination 'generic/platform=iOS' -archivePath "$RUNNER_TEMP/PitchLab.xcarchive" CODE_SIGNING_ALLOWED=NO
+          ditto -c -k --keepParent "$RUNNER_TEMP/PitchLab.xcarchive" "$RUNNER_TEMP/PitchLab-unsigned-archive.zip"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PitchLab-unsigned-archive-preflight
+          path: ${{ runner.temp }}/PitchLab-unsigned-archive.zip
+          if-no-files-found: error
