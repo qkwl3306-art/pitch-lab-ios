@@ -51,6 +51,8 @@ struct VocalPracticeView: View {
                     .padding(12)
                     .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 18))
                 practiceControls(melody: melody, phrase: phrase)
+                    .disabled(!access.access.allowsPractice)
+                if !access.access.allowsPractice { PracticeAccessPanel() }
                 if let feedback = model.feedback ?? (model.phase == .idle ? lastFeedback[selectedPhrase] : nil) { results(feedback) }
             } else {
                 ContentUnavailableView(String(localized: "没有可练习的旋律"), systemImage: "music.note")
