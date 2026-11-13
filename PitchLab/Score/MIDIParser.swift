@@ -7,9 +7,9 @@ enum MIDIParseError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidFile: "MIDI 文件损坏或格式无法识别"
-        case .unsupportedTiming: "暂不支持这种 MIDI 时间格式"
-        case .noNotes: "MIDI 文件中没有可练习的音符"
+        case .invalidFile: String(localized: "MIDI 文件损坏或格式无法识别")
+        case .unsupportedTiming: String(localized: "暂不支持这种 MIDI 时间格式")
+        case .noNotes: String(localized: "MIDI 文件中没有可练习的音符")
         }
     }
 }

@@ -68,11 +68,11 @@ enum SVPParseError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .invalidFile: "SVP 文件无法读取"
-        case .unsupportedVersion: "不支持这个版本的 SVP 文件"
-        case .noSingingNotes: "SVP 文件中没有人声音符"
-        case .invalidTempo: "SVP 文件中的速度信息无效"
-        case .invalidNote: "SVP 文件中有无效音符"
+        case .invalidFile: String(localized: "SVP 文件无法读取")
+        case .unsupportedVersion: String(localized: "不支持这个版本的 SVP 文件")
+        case .noSingingNotes: String(localized: "SVP 文件中没有人声音符")
+        case .invalidTempo: String(localized: "SVP 文件中的速度信息无效")
+        case .invalidNote: String(localized: "SVP 文件中有无效音符")
         }
     }
 }

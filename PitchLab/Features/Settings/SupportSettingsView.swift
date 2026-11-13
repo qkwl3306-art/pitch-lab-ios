@@ -9,6 +9,7 @@ struct SupportSettingsView: View {
     var body: some View {
         NavigationStack {
             List {
+                Section { PracticeAccessPanel() }
                 Section {
                     Button {
                         sendFeedback()

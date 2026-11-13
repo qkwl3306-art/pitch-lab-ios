@@ -10,6 +10,7 @@ private struct SavedPhraseProgress: Codable {
 }
 
 struct VocalPracticeView: View {
+    @EnvironmentObject private var access: PracticeAccessStore
     @ObservedObject var store: ScoreStore
     let score: StoredScore
     @StateObject private var model = PhrasePracticeViewModel()
@@ -52,10 +53,10 @@ struct VocalPracticeView: View {
                 practiceControls(melody: melody, phrase: phrase)
                 if let feedback = model.feedback ?? (model.phase == .idle ? lastFeedback[selectedPhrase] : nil) { results(feedback) }
             } else {
-                ContentUnavailableView("没有可练习的旋律", systemImage: "music.note")
+                ContentUnavailableView(String(localized: "没有可练习的旋律"), systemImage: "music.note")
             }
             lyricControls
-            rangeControls
+            rangeControls.disabled(!access.access.allowsPractice)
         }
         .sheet(isPresented: $showLyricsFile) {
             FileDocumentPicker(onPick: importLyrics, onCancel: { showLyricsFile = false })
@@ -64,17 +65,17 @@ struct VocalPracticeView: View {
         .sheet(isPresented: $showPaste) {
             NavigationStack {
                 VStack(alignment: .leading) {
-                    Text("每行一句歌词，依次对应自动分出的句子。")
+                    Text(String(localized: "每行一句歌词，依次对应自动分出的句子。"))
                         .foregroundStyle(.secondary)
                     TextEditor(text: $pastedLyrics)
                         .border(.secondary.opacity(0.3))
                 }
                 .padding()
-                .navigationTitle("粘贴歌词")
+                .navigationTitle(String(localized: "粘贴歌词"))
                 .toolbar {
-                    ToolbarItem(placement: .cancellationAction) { Button("取消") { showPaste = false } }
+                    ToolbarItem(placement: .cancellationAction) { Button(String(localized: "取消")) { showPaste = false } }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("保存") {
+                        Button(String(localized: "保存")) {
                             do {
                                 let lines = try LyricsParser.parseTXT(data: Data(pastedLyrics.utf8))
                                 try store.setLyrics(lines, for: current)
@@ -97,11 +98,11 @@ struct VocalPracticeView: View {
             NavigationStack {
                 TextEditor(text: $phraseText)
                     .padding()
-                    .navigationTitle("编辑本句歌词")
+                    .navigationTitle(String(localized: "编辑本句歌词"))
                     .toolbar {
-                        ToolbarItem(placement: .cancellationAction) { Button("取消") { showPhraseText = false } }
+                        ToolbarItem(placement: .cancellationAction) { Button(String(localized: "取消")) { showPhraseText = false } }
                         ToolbarItem(placement: .confirmationAction) {
-                            Button("保存") {
+                            Button(String(localized: "保存")) {
                                 guard phrases.indices.contains(selectedPhrase) else { return }
                                 var changed = phrases
                                 changed[selectedPhrase].text = phraseText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -112,9 +113,9 @@ struct VocalPracticeView: View {
                     }
             }
         }
-        .alert("操作失败", isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
-            Button("好") { errorMessage = nil }
-        } message: { Text(errorMessage ?? "未知错误") }
+        .alert(String(localized: "操作失败"), isPresented: Binding(get: { errorMessage != nil }, set: { if !$0 { errorMessage = nil } })) {
+            Button(String(localized: "好")) { errorMessage = nil }
+        } message: { Text(errorMessage ?? String(localized: "未知错误")) }
         .onChange(of: model.feedback) { _, feedback in
             guard let feedback else { return }
             attempts[selectedPhrase, default: 0] += 1
@@ -125,16 +126,19 @@ struct VocalPracticeView: View {
         .onAppear { loadProgress() }
         .onChange(of: practiceMode) { _, mode in model.changeMode(mode) }
         .onDisappear { model.stop() }
+        .onChange(of: access.access.allowsPractice) { _, allowed in
+            if !allowed { model.stop(); showRange = false }
+        }
     }
 
     private var lyricControls: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text("歌词").font(.headline)
-            Text("导入 LRC／TXT，或按每行一句粘贴。LRC 时间会匹配最近的句子。")
+            Text(String(localized: "歌词")).font(.headline)
+            Text(String(localized: "导入 LRC／TXT，或按每行一句粘贴。LRC 时间会匹配最近的句子。"))
                 .font(.caption).foregroundStyle(.secondary)
             HStack {
-                Button("导入歌词", systemImage: "doc.text") { showLyricsFile = true }
-                Button("粘贴歌词", systemImage: "doc.on.clipboard") { showPaste = true }
+                Button(String(localized: "导入歌词"), systemImage: "doc.text") { showLyricsFile = true }
+                Button(String(localized: "粘贴歌词"), systemImage: "doc.on.clipboard") { showPaste = true }
             }
             .buttonStyle(.bordered)
         }
@@ -157,9 +161,9 @@ struct VocalPracticeView: View {
     private var rangeControls: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                Text("适合我的调").font(.headline)
+                Text(String(localized: "适合我的调")).font(.headline)
                 Spacer()
-                Button(range == nil ? "测量音域" : "重测音域") { model.stop(); showRange = true }
+                Button(range == nil ? String(localized: "测量音域") : String(localized: "重测音域")) { model.stop(); showRange = true }
             }
             if let range {
                 Text("舒适音域 \(NoteMath.name(midi: range.low))～\(NoteMath.name(midi: range.high))")
@@ -168,7 +172,7 @@ struct VocalPracticeView: View {
                     recommendation(melody: melody, range: range)
                 }
             } else {
-                Text("先唱出舒适的最低音和最高音，便可推荐整首歌的调。")
+                Text(String(localized: "先唱出舒适的最低音和最高音，便可推荐整首歌的调。"))
                     .font(.caption).foregroundStyle(.secondary)
             }
             transposeControls
@@ -179,7 +183,7 @@ struct VocalPracticeView: View {
 
     private func recommendation(melody: VocalScore, range: VocalRange) -> some View {
         let advice = KeyRecommendation.recommend(notes: melody.notes.map(\.midi), range: range)
-        let keyName = advice.semitones == 0 ? "原调" : String(format: "%+d 半音", advice.semitones)
+        let keyName = advice.semitones == 0 ? String(localized: "原调") : String(format: String(localized: "%+d 半音"), advice.semitones)
         let lowName = advice.lowestNote.map(NoteMath.name(midi:)) ?? "—"
         let highName = advice.highestNote.map(NoteMath.name(midi:)) ?? "—"
         return VStack(alignment: .leading, spacing: 5) {
@@ -190,18 +194,18 @@ struct VocalPracticeView: View {
                 Text("仍有 \(advice.outOfRangeNoteCount) 个音超出舒适音域")
                     .font(.caption).foregroundStyle(.orange)
             }
-            Button("应用建议调") { changeShift(to: advice.semitones) }
+            Button(String(localized: "应用建议调")) { changeShift(to: advice.semitones) }
                 .buttonStyle(.bordered)
         }
     }
 
     private var transposeControls: some View {
         HStack {
-            Text("整首移调").font(.subheadline)
+            Text(String(localized: "整首移调")).font(.subheadline)
             Spacer()
             Button { changeShift(to: shift - 1) } label: { Image(systemName: "minus.circle.fill") }
                 .disabled(shift <= -12)
-            Text(shift == 0 ? "原调" : String(format: "%+d", shift))
+            Text(shift == 0 ? String(localized: "原调") : String(format: "%+d", shift))
                 .frame(minWidth: 48).monospacedDigit()
             Button { changeShift(to: shift + 1) } label: { Image(systemName: "plus.circle.fill") }
                 .disabled(shift >= 12)
@@ -213,10 +217,11 @@ struct VocalPracticeView: View {
         VStack(alignment: .leading, spacing: 10) {
             Text("第 \(selectedPhrase + 1) / \(phrases.count) 句")
                 .font(.headline)
-            Text(phrase.text).font(.title3.bold())
-            Button("编辑本句歌词") { phraseText = phrase.text; showPhraseText = true }
+            Text(phrase.text == "第 \(phrase.id + 1) 句" ? String(localized: "第 \(phrase.id + 1) 句") : phrase.text).font(.title3.bold())
+            Button(String(localized: "编辑本句歌词")) { phraseText = phrase.text; showPhraseText = true }
                 .font(.caption)
-            Text("\(phrase.noteRange.count) 个音 · 已练 \(attempts[selectedPhrase, default: 0]) 次 · \(passed.contains(selectedPhrase) ? "已达标" : "待达标")")
+            let result = passed.contains(selectedPhrase) ? String(localized: "已达标") : String(localized: "待达标")
+            Text("\(phrase.noteRange.count) 个音 · 已练 \(attempts[selectedPhrase, default: 0]) 次 · \(result)")
                 .font(.caption).foregroundStyle(.secondary)
             ScrollViewReader { proxy in
                 ScrollView(.horizontal) {
@@ -230,9 +235,9 @@ struct VocalPracticeView: View {
                                 if status == .passed || model.passedNoteIndices.contains(index) {
                                     Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                                 } else if model.skippedNoteIndices.contains(index) {
-                                    Text("重练").font(.caption2).foregroundStyle(.orange)
+                                    Text(String(localized: "重练")).font(.caption2).foregroundStyle(.orange)
                                 } else if isTarget {
-                                    Text(model.targetCents.map { String(format: "%+.0f¢", $0) } ?? "唱这个音")
+                                    Text(model.targetCents.map { String(format: "%+.0f¢", $0) } ?? String(localized: "唱这个音"))
                                         .font(.caption2).foregroundStyle(.orange)
                                 } else { Text(" ").font(.caption2) }
                             }
@@ -263,15 +268,15 @@ struct VocalPracticeView: View {
                 }
             }
             HStack {
-                Button("上句") { model.stop(); selectedPhrase -= 1 }.disabled(selectedPhrase == 0)
-                Button("下句") { model.stop(); selectedPhrase += 1 }.disabled(selectedPhrase >= phrases.count - 1)
+                Button(String(localized: "上句")) { model.stop(); selectedPhrase -= 1 }.disabled(selectedPhrase == 0)
+                Button(String(localized: "下句")) { model.stop(); selectedPhrase += 1 }.disabled(selectedPhrase >= phrases.count - 1)
             }
             .buttonStyle(.bordered)
             if selectedPhrase < phrases.count - 1 {
                 HStack {
-                    Text("调整本句结尾")
-                    Button("少一个音") { moveBoundary(by: -1, melody: melody) }
-                    Button("多一个音") { moveBoundary(by: 1, melody: melody) }
+                    Text(String(localized: "调整本句结尾"))
+                    Button(String(localized: "少一个音")) { moveBoundary(by: -1, melody: melody) }
+                    Button(String(localized: "多一个音")) { moveBoundary(by: 1, melody: melody) }
                 }
                 .font(.caption)
                 .buttonStyle(.bordered)
@@ -287,14 +292,14 @@ struct VocalPracticeView: View {
                 Text("当前音高：\(model.currentName)")
                 Spacer()
                 switch model.phase {
-                case .idle: Text("准备好了")
-                case .starting: Text("正在开启麦克风")
-                case .listening: Text("持续识别中")
-                case .finished: Text("本句完成 · 可立即重练")
+                case .idle: Text(String(localized: "准备好了"))
+                case .starting: Text(String(localized: "正在开启麦克风"))
+                case .listening: Text(String(localized: "持续识别中"))
+                case .finished: Text(String(localized: "本句完成 · 可立即重练"))
                 }
             }
             .font(.subheadline)
-            Picker("练习方式", selection: $practiceMode) {
+            Picker(String(localized: "练习方式"), selection: $practiceMode) {
                 ForEach(SelfPacedPracticeMode.allCases) { mode in
                     Text(mode.title).tag(mode)
                 }
@@ -303,7 +308,7 @@ struct VocalPracticeView: View {
             .accessibilityIdentifier("self-paced-mode-picker")
             if let targetName = model.targetName {
                 HStack(alignment: .firstTextBaseline) {
-                    Text("当前目标音").font(.caption).foregroundStyle(.secondary)
+                    Text(String(localized: "当前目标音")).font(.caption).foregroundStyle(.secondary)
                     Text(targetName).font(.largeTitle.bold().monospacedDigit()).foregroundStyle(.orange)
                         .accessibilityIdentifier("practice-target-note")
                     Spacer()
@@ -314,11 +319,11 @@ struct VocalPracticeView: View {
                 }
             }
             HStack {
-                Button("听示范", systemImage: "play.fill") {
+                Button(String(localized: "听示范"), systemImage: "play.fill") {
                     model.preview(score: melody, phrase: phrase, transposition: shift)
                 }
                 if model.phase == .idle || model.phase == .finished {
-                    Button("准备好了", systemImage: "mic.fill") {
+                    Button(String(localized: "准备好了"), systemImage: "mic.fill") {
                         if model.phase == .finished {
                             model.restart()
                         } else {
@@ -328,20 +333,20 @@ struct VocalPracticeView: View {
                     .buttonStyle(.borderedProminent)
                 } else {
                     if practiceMode == .noteByNote {
-                        Button("下一个音") { model.advance() }.buttonStyle(.borderedProminent)
+                        Button(String(localized: "下一个音")) { model.advance() }.buttonStyle(.borderedProminent)
                     }
-                    Button("跳过") { model.skipCurrent() }.buttonStyle(.bordered)
+                    Button(String(localized: "跳过")) { model.skipCurrent() }.buttonStyle(.bordered)
                 }
-                Button("停止") { model.stop() }
+                Button(String(localized: "停止")) { model.stop() }
             }
             .buttonStyle(.bordered)
             if model.microphoneStatus == .denied {
-                Text("请到系统设置中开启麦克风权限。")
+                Text(String(localized: "请到系统设置中开启麦克风权限。"))
                     .foregroundStyle(.orange)
             } else if case .failed(let message) = model.microphoneStatus {
                 Text("麦克风启动失败：\(message)").foregroundStyle(.red)
             }
-            Text("保持开启即可持续识别。音高稳定落在目标 ±50 音分内即算唱准；短暂停顿不会漏判，可反复尝试。")
+            Text(String(localized: "保持开启即可持续识别。音高稳定落在目标 ±50 音分内即算唱准；短暂停顿不会漏判，可反复尝试。"))
                 .font(.caption).foregroundStyle(.secondary)
         }
         .padding(16)
@@ -350,7 +355,7 @@ struct VocalPracticeView: View {
 
     private func results(_ feedback: PhraseFeedback) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            Text(feedback.passed ? "本句通过，可以练下一句" : "标出的音再练一次")
+            Text(feedback.passed ? String(localized: "本句通过，可以练下一句") : String(localized: "标出的音再练一次"))
                 .font(.headline)
                 .foregroundStyle(feedback.passed ? .green : .orange)
             ForEach(feedback.notes, id: \.noteIndex) { note in
@@ -358,10 +363,10 @@ struct VocalPracticeView: View {
                     Text("第 \(note.noteIndex - (phrase?.noteRange.lowerBound ?? 0) + 1) 音 · \(NoteMath.name(midi: note.targetMIDI))")
                     Spacer()
                     Text(statusText(note.status))
-                    if let cents = note.cents { Text(String(format: "%+.0f 音分", cents)) }
+                    if let cents = note.cents { Text(String(format: String(localized: "%+.0f 音分"), cents)) }
                     if note.status != .passed {
-                        Button("重练") {
-                            guard let melody, let phrase else { return }
+                        Button(String(localized: "重练")) {
+                            guard access.access.allowsPractice, let melody, let phrase else { return }
                             model.retry(noteIndex: note.noteIndex, score: melody, phrase: phrase,
                                         transposition: shift, mode: practiceMode, previousFeedback: feedback)
                         }
@@ -378,10 +383,10 @@ struct VocalPracticeView: View {
 
     private func statusText(_ status: NoteFeedbackStatus) -> String {
         switch status {
-        case .passed: "唱准"
-        case .high: "偏高"
-        case .low: "偏低"
-        case .missed: "待重练"
+        case .passed: String(localized: "唱准")
+        case .high: String(localized: "偏高")
+        case .low: String(localized: "偏低")
+        case .missed: String(localized: "待重练")
         }
     }
 
@@ -484,9 +489,9 @@ private struct PitchLane: View {
             }
             context.stroke(sung, with: .color(.orange), style: StrokeStyle(lineWidth: 2, lineCap: .round))
         }
-        .accessibilityLabel("旋律与跟唱音高曲线")
+        .accessibilityLabel(String(localized: "旋律与跟唱音高曲线"))
         .overlay(alignment: .topLeading) {
-            if !readings.isEmpty { Text("最近 8 秒").font(.caption2).foregroundStyle(.secondary) }
+            if !readings.isEmpty { Text(String(localized: "最近 8 秒")).font(.caption2).foregroundStyle(.secondary) }
         }
     }
 }
@@ -527,38 +532,41 @@ private struct VocalRangeCaptureView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
-                Text("先用舒服的声音唱最低音，持续约两秒后点“记录最低音”；再唱舒服的最高音。不要勉强压低或拉高。")
+                Text(String(localized: "先用舒服的声音唱最低音，持续约两秒后点“记录最低音”；再唱舒服的最高音。不要勉强压低或拉高。"))
                 Text("当前：\(model.current.map(NoteMath.name(midi:)) ?? "—")")
                     .font(.title.bold())
                 HStack {
-                    Button("开始测量") { model.start() }
-                    Button(low == nil ? "记录最低音" : "记录最高音") {
+                    Button(String(localized: "开始测量")) { model.start() }
+                    Button(low == nil ? String(localized: "记录最低音") : String(localized: "记录最高音")) {
                         if let note = model.capture() {
                             if low == nil { low = note } else { high = note }
-                        } else { error = "声音不够稳定，请持续唱同一个音后再记录。" }
+                        } else { error = String(localized: "声音不够稳定，请持续唱同一个音后再记录。") }
                     }
                 }
                 .buttonStyle(.bordered)
                 Text("最低：\(low.map(NoteMath.name(midi:)) ?? "—") · 最高：\(high.map(NoteMath.name(midi:)) ?? "—")")
                 if let low, let high {
-                    Text("可手动微调测量结果")
+                    Text(String(localized: "可手动微调测量结果"))
                     Stepper("最低 \(NoteMath.name(midi: low))", value: Binding(get: { low }, set: { self.low = $0 }), in: 24...96)
                     Stepper("最高 \(NoteMath.name(midi: high))", value: Binding(get: { high }, set: { self.high = $0 }), in: 24...96)
-                    Button("保存舒适音域") {
-                        guard low <= high else { error = "最低音需要低于最高音"; return }
+                    Button(String(localized: "保存舒适音域")) {
+                        guard low <= high else { error = String(localized: "最低音需要低于最高音"); return }
                         onSave(VocalRange(low: low, high: high))
                         dismiss()
                     }
                     .buttonStyle(.borderedProminent)
                 }
-                if model.status == .denied { Text("请到系统设置中开启麦克风权限。") }
+                if model.status == .denied { Text(String(localized: "请到系统设置中开启麦克风权限。")) }
                 if let error { Text(error).foregroundStyle(.red) }
                 Spacer()
             }
             .padding()
-            .navigationTitle("测量舒适音域")
-            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button("关闭") { dismiss() } } }
+            .navigationTitle(String(localized: "测量舒适音域"))
+            .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "关闭")) { dismiss() } } }
             .onDisappear { model.stop() }
+        .onChange(of: access.access.allowsPractice) { _, allowed in
+            if !allowed { model.stop(); showRange = false }
+        }
         }
     }
 }

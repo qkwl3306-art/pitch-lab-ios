@@ -3,7 +3,7 @@ import XCTest
 final class PitchLabUITests: XCTestCase {
     func testPianoOpensAndPlays() {
         let app = XCUIApplication()
-        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launchArguments += ["--ui-test-unlocked", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
         app.tabBars.buttons["钢琴"].tap()
         XCTAssertTrue(app.staticTexts["触摸琴键，听见标准音"].waitForExistence(timeout: 5))
@@ -14,7 +14,7 @@ final class PitchLabUITests: XCTestCase {
 
     func testQuizOpensAndReplays() {
         let app = XCUIApplication()
-        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launchArguments += ["--ui-test-unlocked", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
         app.tabBars.buttons["听音测试"].tap()
         XCTAssertTrue(app.staticTexts["你听到了哪个音？"].waitForExistence(timeout: 5))
@@ -25,7 +25,7 @@ final class PitchLabUITests: XCTestCase {
 
     func testPracticeLibraryOpens() {
         let app = XCUIApplication()
-        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launchArguments += ["--ui-test-unlocked", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
         app.tabBars.buttons["练唱"].tap()
         XCTAssertTrue(app.staticTexts["导入乐谱，开始练唱"].waitForExistence(timeout: 5))
@@ -35,7 +35,7 @@ final class PitchLabUITests: XCTestCase {
     func testVocalPhrasePracticeOpensAndChangesPhrase() {
         let app = XCUIApplication()
         app.launchArguments.append("--ui-test-vocal-score")
-        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launchArguments += ["--ui-test-unlocked", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
         app.tabBars.buttons["练唱"].tap()
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Vocal UI Test")).firstMatch.tap()
@@ -54,6 +54,16 @@ final class PitchLabUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["第二句"].waitForExistence(timeout: 3))
     }
 
+    func testEnglishSingingLibraryStaysAvailableWithoutAccess() {
+        let app = XCUIApplication()
+        app.launchArguments += ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
+        app.launch()
+        app.tabBars.buttons["Singing"].tap()
+        XCTAssertTrue(app.staticTexts["Import a Score to Start Singing"].waitForExistence(timeout: 5))
+        app.tabBars.buttons["Pitch"].tap()
+        XCTAssertTrue(app.buttons["Restore Purchases"].waitForExistence(timeout: 5))
+    }
+
     private func saveScreenshot(_ app: XCUIApplication, name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name
@@ -64,7 +74,7 @@ final class PitchLabUITests: XCTestCase {
     func testContinuousPracticeModeRetryAndPhraseContext() {
         let app = XCUIApplication()
         app.launchArguments += ["--ui-test-vocal-score", "--ui-test-practice-capture"]
-        app.launchArguments += ["-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
+        app.launchArguments += ["--ui-test-unlocked", "-AppleLanguages", "(zh-Hans)", "-AppleLocale", "zh_CN"]
         app.launch()
         app.tabBars.buttons["练唱"].tap()
         app.buttons.matching(NSPredicate(format: "label CONTAINS %@", "Vocal UI Test")).firstMatch.tap()

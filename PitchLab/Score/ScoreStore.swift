@@ -110,7 +110,7 @@ final class ScoreStore: ObservableObject {
     }
 
     @discardableResult
-    func importImage(_ data: Data, name: String = "照片乐谱") throws -> StoredScore {
+    func importImage(_ data: Data, name: String = String(localized: "照片乐谱")) throws -> StoredScore {
         guard let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.9) else {
             throw ScoreImportError.invalidImage
         }
@@ -176,7 +176,7 @@ final class ScoreStore: ObservableObject {
         let fileName = "\(id.uuidString).\(ext)"
         let destination = directory.appendingPathComponent(fileName)
         try data.write(to: destination, options: .atomic)
-        let score = StoredScore(id: id, name: name.isEmpty ? "未命名乐谱" : name, fileName: fileName,
+        let score = StoredScore(id: id, name: name.isEmpty ? String(localized: "未命名乐谱") : name, fileName: fileName,
                                 kind: kind, notes: notes, vocalScore: vocalScore, phrases: phrases)
         items.insert(score, at: 0)
         do {

@@ -9,9 +9,9 @@ enum SelfPacedPracticeMode: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .noteByNote: "逐音练习"
-        case .progressive: "递进练句"
-        case .wholePhrase: "整句跟唱"
+        case .noteByNote: String(localized: "逐音练习")
+        case .progressive: String(localized: "递进练句")
+        case .wholePhrase: String(localized: "整句跟唱")
         }
     }
 }

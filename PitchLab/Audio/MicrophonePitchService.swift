@@ -63,7 +63,7 @@ final class MicrophonePitchService: ObservableObject {
                 }
             }
         @unknown default:
-            status = .failed("无法读取麦克风权限状态")
+            status = .failed(String(localized: "无法读取麦克风权限状态"))
         }
     }
 
@@ -90,7 +90,7 @@ final class MicrophonePitchService: ObservableObject {
             let input = engine.inputNode
             let format = input.outputFormat(forBus: 0)
             guard format.sampleRate > 0, format.channelCount > 0 else {
-                status = .failed("未找到可用的麦克风输入")
+                status = .failed(String(localized: "未找到可用的麦克风输入"))
                 return
             }
             let gate = analysisGate

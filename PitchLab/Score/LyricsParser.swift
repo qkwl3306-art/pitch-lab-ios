@@ -11,8 +11,8 @@ enum LyricsParseError: LocalizedError {
 
     var errorDescription: String? {
         switch self {
-        case .unsupportedEncoding: "歌词文件不是 UTF-8 文本"
-        case .noLyrics: "歌词文件没有可用的歌词行"
+        case .unsupportedEncoding: String(localized: "歌词文件不是 UTF-8 文本")
+        case .noLyrics: String(localized: "歌词文件没有可用的歌词行")
         }
     }
 }

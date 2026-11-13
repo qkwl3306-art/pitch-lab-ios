@@ -3,6 +3,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct PracticeView: View {
+    @EnvironmentObject private var access: PracticeAccessStore
     @StateObject private var store = ScoreStore()
     @StateObject private var model = PracticeViewModel()
     @State private var selectedID: UUID?
@@ -25,12 +26,12 @@ struct PracticeView: View {
                 .padding()
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle(selectedScore?.name ?? "练唱")
+            .navigationTitle(selectedScore?.name ?? String(localized: "练唱"))
             .navigationBarTitleDisplayMode(selectedScore?.kind == .vocal ? .inline : .automatic)
             .toolbar {
                 if selectedScore != nil {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button("乐谱库", systemImage: "chevron.left") {
+                        Button(String(localized: "乐谱库"), systemImage: "chevron.left") {
                             model.stop()
                             selectedID = nil
                         }
@@ -56,15 +57,18 @@ struct PracticeView: View {
                     photoItem = nil
                 }
             }
-            .alert("导入失败", isPresented: Binding(
+            .alert(String(localized: "导入失败"), isPresented: Binding(
                 get: { errorMessage != nil },
                 set: { if !$0 { errorMessage = nil } }
             )) {
-                Button("好", role: .cancel) { errorMessage = nil }
+                Button(String(localized: "好"), role: .cancel) { errorMessage = nil }
             } message: {
-                Text(errorMessage ?? "未知错误")
+                Text(errorMessage ?? String(localized: "未知错误"))
             }
             .onDisappear { model.stop() }
+            .onChange(of: access.access.allowsPractice) { _, allowed in
+                if !allowed { model.stop() }
+            }
             .onAppear { seedVocalScoreForUITest() }
         }
     }
@@ -72,27 +76,27 @@ struct PracticeView: View {
     private var library: some View {
         VStack(alignment: .leading, spacing: 18) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("导入乐谱，开始练唱")
+                Text(String(localized: "导入乐谱，开始练唱"))
                     .font(.title2.bold())
-                Text("支持 SVP／MIDI 人声旋律、MusicXML、MXL、PDF 和乐谱照片。人声旋律可配歌词逐句练唱。")
+                Text(String(localized: "支持 SVP／MIDI 人声旋律、MusicXML、MXL、PDF 和乐谱照片。人声旋律可配歌词逐句练唱。"))
                     .foregroundStyle(.secondary)
             }
             HStack {
                 Button { showFiles = true } label: {
-                    Label("从文件导入", systemImage: "folder.badge.plus")
+                    Label(String(localized: "从文件导入"), systemImage: "folder.badge.plus")
                 }
                 .buttonStyle(.borderedProminent)
                 PhotosPicker(selection: $photoItem, matching: .images) {
-                    Label("从照片导入", systemImage: "photo.on.rectangle")
+                    Label(String(localized: "从照片导入"), systemImage: "photo.on.rectangle")
                 }
                 .buttonStyle(.bordered)
             }
             if store.items.isEmpty {
-                ContentUnavailableView("还没有乐谱", systemImage: "music.note.list", description: Text("先导入一份乐谱或照片"))
+                ContentUnavailableView(String(localized: "还没有乐谱"), systemImage: "music.note.list", description: Text(String(localized: "先导入一份乐谱或照片")))
                     .frame(maxWidth: .infinity)
                     .padding(.top, 50)
             } else {
-                Text("我的乐谱")
+                Text(String(localized: "我的乐谱"))
                     .font(.headline)
                 ForEach(store.items) { score in
                     Button { open(score) } label: {
@@ -103,7 +107,7 @@ struct PracticeView: View {
                                 .background(.mint.opacity(0.14), in: RoundedRectangle(cornerRadius: 10))
                             VStack(alignment: .leading) {
                                 Text(score.name).font(.headline)
-                                Text(score.kind == .vocal ? "\(score.phrases.count) 句人声旋律" : score.kind == .musicXML ? "\(score.notes.count) 个可练习音符" : "看谱练唱")
+                                Text(score.kind == .vocal ? String(localized: "\(score.phrases.count) 句人声旋律") : score.kind == .musicXML ? String(localized: "\(score.notes.count) 个可练习音符") : String(localized: "看谱练唱"))
                                     .font(.caption)
                                     .foregroundStyle(.secondary)
                             }
@@ -115,7 +119,7 @@ struct PracticeView: View {
                     }
                     .buttonStyle(.plain)
                     .contextMenu {
-                        Button("删除乐谱", role: .destructive) { store.remove(score) }
+                        Button(String(localized: "删除乐谱"), role: .destructive) { store.remove(score) }
                     }
                 }
             }
@@ -131,14 +135,14 @@ struct PracticeView: View {
             if let session = model.session {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
-                        Text("移调")
+                        Text(String(localized: "移调"))
                             .font(.headline)
                         Spacer()
                         Button { model.transpose(by: -1) } label: {
                             Image(systemName: "minus.circle.fill")
                         }
                         .disabled(session.transposition <= -12)
-                        Text(session.transposition == 0 ? "原调" : String(format: "%+d 半音", session.transposition))
+                        Text(session.transposition == 0 ? String(localized: "原调") : String(format: String(localized: "%+d 半音"), session.transposition))
                             .font(.subheadline.monospacedDigit())
                             .frame(minWidth: 78)
                         Button { model.transpose(by: 1) } label: {
@@ -156,17 +160,17 @@ struct PracticeView: View {
                         Text(model.targetName)
                             .font(.system(size: 48, weight: .bold, design: .rounded))
                         Spacer()
-                        Label(session.currentPassed ? "已达标" : "待练习", systemImage: session.currentPassed ? "checkmark.circle.fill" : "circle.dotted")
+                        Label(session.currentPassed ? String(localized: "已达标") : String(localized: "待练习"), systemImage: session.currentPassed ? "checkmark.circle.fill" : "circle.dotted")
                             .foregroundStyle(session.currentPassed ? .green : .secondary)
                     }
                     Text("当前声音：\(model.currentName)  ·  \(model.pitchHz.map { String(format: "%.1f Hz", $0) } ?? "—")")
-                    Text("与目标相差：\(model.cents.map { String(format: "%+.0f 音分", $0) } ?? "—")")
+                    Text("与目标相差：\(model.cents.map { String(format: String(localized: "%+.0f 音分"), $0) } ?? "—")")
                         .foregroundStyle(.secondary)
                     HStack {
-                        Button("上一个", systemImage: "chevron.left") { model.previous() }
+                        Button(String(localized: "上一个"), systemImage: "chevron.left") { model.previous() }
                             .disabled(session.index == 0)
-                        Button("听目标音", systemImage: "play.fill") { model.playTarget() }
-                        Button("下一个", systemImage: "chevron.right") { model.next() }
+                        Button(String(localized: "听目标音"), systemImage: "play.fill") { model.playTarget() }
+                        Button(String(localized: "下一个"), systemImage: "chevron.right") { model.next() }
                             .disabled(session.index >= session.notes.count - 1)
                     }
                     .buttonStyle(.bordered)
@@ -174,13 +178,13 @@ struct PracticeView: View {
                 .padding(20)
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24))
             } else {
-                Text("边看谱边唱，下面会显示你的实时音高。PDF 和图片暂不自动识谱。")
+                Text(String(localized: "边看谱边唱，下面会显示你的实时音高。PDF 和图片暂不自动识谱。"))
                     .foregroundStyle(.secondary)
             }
 
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
-                    Text("实时音高")
+                    Text(String(localized: "实时音高"))
                         .font(.headline)
                     Spacer()
                     Text(model.currentName)
@@ -194,7 +198,7 @@ struct PracticeView: View {
             .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 24))
 
             if model.status == .denied {
-                Text("麦克风权限已关闭，请在系统设置中开启。")
+                Text(String(localized: "麦克风权限已关闭，请在系统设置中开启。"))
                     .foregroundStyle(.orange)
             } else if case .failed(let message) = model.status {
                 Text("音频启动失败：\(message)")
@@ -203,13 +207,13 @@ struct PracticeView: View {
             Button {
                 model.status == .listening ? model.stop() : model.start()
             } label: {
-                Label(model.status == .listening ? "停止练唱" : "开始练唱", systemImage: model.status == .listening ? "stop.fill" : "mic.fill")
+                Label(model.status == .listening ? String(localized: "停止练唱") : String(localized: "开始练唱"), systemImage: model.status == .listening ? "stop.fill" : "mic.fill")
                     .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
             .tint(.mint)
             .controlSize(.large)
-            Text("MusicXML 只读取首个分部的单声部旋律；手动切换目标音。连续唱准约 0.3 秒即达标。")
+            Text(String(localized: "MusicXML 只读取首个分部的单声部旋律；手动切换目标音。连续唱准约 0.3 秒即达标。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
             }
@@ -229,7 +233,7 @@ struct PracticeView: View {
                 .background(.thinMaterial, in: RoundedRectangle(cornerRadius: 20))
         case .musicXML:
             VStack(alignment: .leading, spacing: 12) {
-                Text("旋律音符")
+                Text(String(localized: "旋律音符"))
                     .font(.headline)
                 ScrollView(.horizontal) {
                     HStack(spacing: 8) {
