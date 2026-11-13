@@ -1,0 +1,2 @@
+"CFBundleDisplayName" = "PitchLab";
+"NSMicrophoneUsageDescription" = "PitchLab uses the microphone to measure your pitch in real time. Audio is processed on your device.";

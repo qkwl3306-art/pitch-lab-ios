@@ -25,8 +25,9 @@ targets:
     info:
       path: PitchLab/Info.plist
       properties:
-        CFBundleDisplayName: 音律实验室
-        NSMicrophoneUsageDescription: 用于实时分析您的声音音高，录音只在设备上处理。
+        CFBundleDevelopmentRegion: en
+        CFBundleDisplayName: PitchLab
+        NSMicrophoneUsageDescription: PitchLab uses the microphone to measure your pitch in real time. Audio is processed on your device.
         UILaunchScreen: {}
         CFBundleDocumentTypes:
           - CFBundleTypeName: PitchLab Scores
