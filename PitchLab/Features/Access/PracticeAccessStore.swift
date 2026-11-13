@@ -24,7 +24,7 @@ final class PracticeAccessStore: ObservableObject {
         }
         #endif
         async let initialLoad: Void = load()
-        for await result in Transaction.updates {
+        for await result in StoreKit.Transaction.updates {
             if case .verified(let transaction) = result, Self.owns(transaction) {
                 await refresh()
                 await transaction.finish()
@@ -33,7 +33,7 @@ final class PracticeAccessStore: ObservableObject {
         await initialLoad
     }
 
-    private static func owns(_ transaction: Transaction) -> Bool {
+    private static func owns(_ transaction: StoreKit.Transaction) -> Bool {
         transaction.productID == trialID || transaction.productID == unlockID
     }
 
@@ -56,7 +56,7 @@ final class PracticeAccessStore: ObservableObject {
         let version = refreshVersion
         var trial: Date?
         var unlocked = false
-        for await result in Transaction.currentEntitlements {
+        for await result in StoreKit.Transaction.currentEntitlements {
             guard case .verified(let transaction) = result,
                   transaction.revocationDate == nil else { continue }
             if transaction.productID == Self.unlockID { unlocked = true }
