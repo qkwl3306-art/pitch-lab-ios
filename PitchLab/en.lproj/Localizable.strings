@@ -1,0 +1,10 @@
+"support.tab" = "Settings";
+"support.title" = "About & Settings";
+"support.feedback" = "Send Feedback";
+"support.email" = "Support Email";
+"support.copy" = "Copy Email Address";
+"support.footer" = "Your email app opens a draft. PitchLab does not attach recordings, scores, or logs.";
+"support.noMail" = "No email app available";
+"support.copied" = "Email address copied";
+"support.ok" = "OK";
+"support.subject" = "PitchLab feedback";

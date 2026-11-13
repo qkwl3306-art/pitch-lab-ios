@@ -11,6 +11,8 @@ struct ContentView: View {
                 .tabItem { Label("听音测试", systemImage: "ear.badge.waveform") }
             PracticeView()
                 .tabItem { Label("练唱", systemImage: "music.note.list") }
+            SupportSettingsView()
+                .tabItem { Label("support.tab", systemImage: "gearshape") }
         }
         .tint(.mint)
     }

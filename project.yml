@@ -21,6 +21,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.qkwl3306art.pitchlab
         PRODUCT_NAME: PitchLab
         TARGETED_DEVICE_FAMILY: 1
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
     info:
       path: PitchLab/Info.plist
       properties:

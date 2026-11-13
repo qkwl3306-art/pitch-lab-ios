@@ -1,0 +1,10 @@
+"support.tab" = "设置";
+"support.title" = "关于与设置";
+"support.feedback" = "提建议";
+"support.email" = "反馈邮箱";
+"support.copy" = "复制邮箱地址";
+"support.footer" = "邮件 App 会打开草稿。PitchLab 不会附加录音、乐谱或日志。";
+"support.noMail" = "无法打开邮件 App";
+"support.copied" = "已复制邮箱地址";
+"support.ok" = "好";
+"support.subject" = "音律实验室反馈";
