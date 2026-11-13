@@ -132,6 +132,8 @@ struct PracticeView: View {
                 VocalPracticeView(store: store, score: score)
             } else {
             scorePreview(score)
+            if !access.access.allowsPractice { PracticeAccessPanel() }
+            Group {
             if let session = model.session {
                 VStack(alignment: .leading, spacing: 14) {
                     HStack {
@@ -213,6 +215,7 @@ struct PracticeView: View {
             .buttonStyle(.borderedProminent)
             .tint(.mint)
             .controlSize(.large)
+            }.disabled(!access.access.allowsPractice)
             Text(String(localized: "MusicXML 只读取首个分部的单声部旋律；手动切换目标音。连续唱准约 0.3 秒即达标。"))
                 .font(.caption)
                 .foregroundStyle(.secondary)

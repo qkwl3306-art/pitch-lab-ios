@@ -522,6 +522,7 @@ private final class RangeCaptureModel: ObservableObject {
 }
 
 private struct VocalRangeCaptureView: View {
+    @EnvironmentObject private var access: PracticeAccessStore
     let onSave: (VocalRange) -> Void
     @Environment(\.dismiss) private var dismiss
     @StateObject private var model = RangeCaptureModel()
@@ -565,7 +566,7 @@ private struct VocalRangeCaptureView: View {
             .toolbar { ToolbarItem(placement: .topBarTrailing) { Button(String(localized: "关闭")) { dismiss() } } }
             .onDisappear { model.stop() }
         .onChange(of: access.access.allowsPractice) { _, allowed in
-            if !allowed { model.stop(); showRange = false }
+            if !allowed { model.stop(); dismiss() }
         }
         }
     }
